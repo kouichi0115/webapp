@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>アンケート回答</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="card">
+    <h1 id="question">読み込み中…</h1>
+    <div class="buttons">
+      <button class="btn yes" id="yes">はい</button>
+      <button class="btn no" id="no">いいえ</button>
+    </div>
+    <p class="msg" id="msg"></p>
+    <p class="muted">回答は何度でも変更できます（1端末1票）</p>
+  </div>
+  <script>
+    // 端末ごとのIDをブラウザに保存
+    let deviceId = localStorage.getItem('deviceId');
+    if (!deviceId) {
+      deviceId = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random());
+      localStorage.setItem('deviceId', deviceId);
+    }
+    const $ = (id) => document.getElementById(id);
+    let myVote = null;
+    let lastQuestion = null;
+
+    function render(s) {
+      $('question').textContent = s.question;
+      $('yes').disabled = $('no').disabled = !s.open;
+      $('yes').classList.toggle('selected', myVote === 'yes');
+      $('no').classList.toggle('selected', myVote === 'no');
+      if (!s.open) $('msg').textContent = '回答の受付は終了しました';
+      else if (myVote) $('msg').textContent = `「${myVote === 'yes' ? 'はい' : 'いいえ'}」で回答済みです`;
+      else $('msg').textContent = 'どちらかを選んでください';
+    }
+
+    async function refresh() {
+      const s = await fetch('/api/state?deviceId=' + encodeURIComponent(deviceId)).then(r => r.json());
+      myVote = s.myVote;
+      lastQuestion = s.question;
+      render(s);
+    }
+
+    async function vote(answer) {
+      const r = await fetch('/api/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId, answer }),
+      });
+      const d = await r.json();
+      if (!r.ok) { $('msg').textContent = d.error; return; }
+      myVote = d.myVote;
+      refresh();
+    }
+
+    $('yes').onclick = () => vote('yes');
+    $('no').onclick = () => vote('no');
+
+    // 質問の変更やリセットをリアルタイムで反映
+    const es = new EventSource('/api/events');
+    es.onmessage = (e) => {
+      const s = JSON.parse(e.data);
+      if (s.question !== lastQuestion || s.total === 0) refresh();
+      else render(s);
+    };
+    refresh();
+  </script>
+</body>
+</html>

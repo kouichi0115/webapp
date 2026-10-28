@@ -1,0 +1,10 @@
+{
+  "name": "survey-app",
+  "version": "1.0.0",
+  "description": "複数端末で はい/いいえ を回答し、集計用端末で数と割合を表示するアンケートアプリ",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT"
+}

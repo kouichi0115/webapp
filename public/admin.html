@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>アンケート集計</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="card">
+    <h1 id="question">読み込み中…</h1>
+    <div class="stats">
+      <div class="stat yes">
+        <div class="label">はい</div>
+        <div class="count" id="yesCount">0</div>
+        <div class="rate" id="yesRate">0%</div>
+      </div>
+      <div class="stat no">
+        <div class="label">いいえ</div>
+        <div class="count" id="noCount">0</div>
+        <div class="rate" id="noRate">0%</div>
+      </div>
+    </div>
+    <div class="bar">
+      <div class="yes" id="yesBar" style="width:0"></div>
+      <div class="no" id="noBar" style="width:0"></div>
+    </div>
+    <div class="total">回答数 合計 <b id="total">0</b> 件　<span class="status" id="status"></span></div>
+  </div>
+
+  <div class="card">
+    <div class="controls">
+      <input id="qInput" placeholder="新しい質問を入力（変更すると集計はリセット）">
+      <button id="setQ">質問を変更</button>
+    </div>
+    <div class="controls" style="margin-top:8px">
+      <button id="toggle">受付を終了</button>
+      <button class="danger" id="reset">集計をリセット</button>
+    </div>
+    <p class="muted">回答用URL: <span id="voteUrl"></span></p>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let isOpen = true;
+    $('voteUrl').textContent = location.origin + '/';
+
+    function render(s) {
+      isOpen = s.open;
+      $('question').textContent = s.question;
+      $('yesCount').textContent = s.yes;
+      $('noCount').textContent = s.no;
+      $('yesRate').textContent = s.yesRate + '%';
+      $('noRate').textContent = s.noRate + '%';
+      $('yesBar').style.width = s.yesRate + '%';
+      $('noBar').style.width = s.noRate + '%';
+      $('yesBar').textContent = s.yes ? s.yesRate + '%' : '';
+      $('noBar').textContent = s.no ? s.noRate + '%' : '';
+      $('total').textContent = s.total;
+      $('status').textContent = s.open ? '受付中' : '受付終了';
+      $('status').style.background = s.open ? '#2b8a3e' : '#7b8794';
+      $('toggle').textContent = s.open ? '受付を終了' : '受付を再開';
+    }
+
+    async function admin(body) {
+      const r = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (r.ok) render(await r.json());
+    }
+
+    $('setQ').onclick = () => {
+      const q = $('qInput').value.trim();
+      if (!q) return;
+      if (confirm('質問を変更すると集計がリセットされます。よろしいですか？')) {
+        admin({ action: 'question', question: q });
+        $('qInput').value = '';
+      }
+    };
+    $('reset').onclick = () => confirm('集計をリセットしますか？') && admin({ action: 'reset' });
+    $('toggle').onclick = () => admin({ action: isOpen ? 'close' : 'open' });
+
+    // 回答が入るたびにリアルタイム更新
+    const es = new EventSource('/api/events');
+    es.onmessage = (e) => render(JSON.parse(e.data));
+  </script>
+</body>
+</html>
