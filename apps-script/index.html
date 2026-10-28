@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif; background: #f4f6f9; color: #1f2933; padding: 24px 16px; display: flex; flex-direction: column; align-items: center; }
+.card { background: #fff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.08); padding: 24px; width: 100%; max-width: 720px; margin-bottom: 16px; }
+h1 { font-size: 1.6rem; text-align: center; margin: 0 0 24px; line-height: 1.4; }
+.buttons { display: flex; gap: 16px; }
+.btn { flex: 1; font-size: 2rem; font-weight: bold; padding: 40px 0; border: 4px solid transparent; border-radius: 16px; color: #fff; cursor: pointer; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.yes { background: #2b8a3e; } .no { background: #c92a2a; }
+.btn.selected { border-color: #1f2933; box-shadow: 0 0 0 4px #ffd43b; }
+.msg { text-align: center; margin-top: 20px; font-size: 1.1rem; min-height: 1.5em; }
+.muted { color: #7b8794; font-size: .9rem; text-align: center; }
+.stats { display: flex; gap: 16px; margin-bottom: 24px; }
+.stat { flex: 1; text-align: center; padding: 16px; border-radius: 12px; color: #fff; }
+.stat .label { font-size: 1.2rem; } .stat .count { font-size: 3.5rem; font-weight: bold; line-height: 1.1; } .stat .rate { font-size: 1.6rem; }
+.bar { display: flex; height: 48px; border-radius: 12px; overflow: hidden; background: #e4e7eb; }
+.bar div { transition: width .4s; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; white-space: nowrap; overflow: hidden; }
+.total { text-align: center; font-size: 1.3rem; margin-top: 16px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.controls input { flex: 1 1 260px; font-size: 1rem; padding: 10px; border: 1px solid #cbd2d9; border-radius: 8px; }
+.controls button { font-size: 1rem; padding: 10px 16px; border: none; border-radius: 8px; background: #3e4c59; color: #fff; cursor: pointer; }
+.controls button.danger { background: #c92a2a; }
+.status { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .9rem; color: #fff; }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+<? if (page === 'admin') { ?>
+  <div class="card">
+    <h1 id="question">読み込み中…</h1>
+    <div class="stats">
+      <div class="stat yes"><div class="label">はい</div><div class="count" id="yesCount">0</div><div class="rate" id="yesRate">0%</div></div>
+      <div class="stat no"><div class="label">いいえ</div><div class="count" id="noCount">0</div><div class="rate" id="noRate">0%</div></div>
+    </div>
+    <div class="bar"><div class="yes" id="yesBar" style="width:0"></div><div class="no" id="noBar" style="width:0"></div></div>
+    <div class="total">回答数 合計 <b id="total">0</b> 件　<span class="status" id="status"></span></div>
+  </div>
+  <div class="card hidden" id="controls">
+    <div class="controls">
+      <input id="qInput" placeholder="新しい質問を入力（変更すると集計はリセット）">
+      <button id="setQ">質問を変更</button>
+    </div>
+    <div class="controls">
+      <button id="toggle">受付を終了</button>
+      <button class="danger" id="reset">集計をリセット</button>
+    </div>
+    <p class="msg" id="msg"></p>
+  </div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let isOpen = true;
+    function render(s) {
+      isOpen = s.open;
+      $('question').textContent = s.question;
+      $('yesCount').textContent = s.yes; $('noCount').textContent = s.no;
+      $('yesRate').textContent = s.yesRate + '%'; $('noRate').textContent = s.noRate + '%';
+      $('yesBar').style.width = s.yesRate + '%'; $('noBar').style.width = s.noRate + '%';
+      $('yesBar').textContent = s.yes ? s.yesRate + '%' : ''; $('noBar').textContent = s.no ? s.noRate + '%' : '';
+      $('total').textContent = s.total;
+      $('status').textContent = s.open ? '受付中' : '受付終了';
+      $('status').style.background = s.open ? '#2b8a3e' : '#7b8794';
+      $('toggle').textContent = s.open ? '受付を終了' : '受付を再開';
+      $('controls').classList.toggle('hidden', !s.isTeacher);
+    }
+    function poll() {
+      google.script.run.withSuccessHandler((s) => { render(s); setTimeout(poll, 2000); })
+        .withFailureHandler(() => setTimeout(poll, 5000)).getSummary();
+    }
+    function admin(action, q) {
+      $('msg').textContent = '処理中…';
+      google.script.run.withSuccessHandler((s) => { render(s); $('msg').textContent = ''; })
+        .withFailureHandler((e) => { $('msg').textContent = e.message; }).admin(action, q);
+    }
+    $('setQ').onclick = () => {
+      const q = $('qInput').value.trim();
+      if (q && confirm('質問を変更すると集計がリセットされます。よろしいですか？')) { admin('question', q); $('qInput').value = ''; }
+    };
+    $('reset').onclick = () => confirm('集計をリセットしますか？') && admin('reset');
+    $('toggle').onclick = () => admin(isOpen ? 'close' : 'open');
+    poll();
+  </script>
+<? } else { ?>
+  <div class="card">
+    <h1 id="question">読み込み中…</h1>
+    <div class="buttons">
+      <button class="btn yes" id="yes" disabled>はい</button>
+      <button class="btn no" id="no" disabled>いいえ</button>
+    </div>
+    <p class="msg" id="msg"></p>
+    <p class="muted">回答は何度でも変更できます（1人1票）</p>
+  </div>
+  <script>
+    let deviceId = null;
+    try { deviceId = localStorage.getItem('deviceId'); } catch (e) {}
+    if (!deviceId) {
+      deviceId = Date.now() + '-' + Math.random().toString(36).slice(2);
+      try { localStorage.setItem('deviceId', deviceId); } catch (e) {}
+    }
+    const $ = (id) => document.getElementById(id);
+    let sending = false;
+    function render(s) {
+      $('question').textContent = s.question;
+      $('yes').disabled = $('no').disabled = !s.open || sending;
+      $('yes').classList.toggle('selected', s.myVote === 'yes');
+      $('no').classList.toggle('selected', s.myVote === 'no');
+      if (!s.open) $('msg').textContent = '回答の受付は終了しました';
+      else if (s.myVote) $('msg').textContent = '「' + (s.myVote === 'yes' ? 'はい' : 'いいえ') + '」で回答済みです';
+      else $('msg').textContent = 'どちらかを選んでください';
+    }
+    function poll() {
+      if (!sending) google.script.run.withSuccessHandler((s) => { if (!sending) render(s); })
+        .withFailureHandler(() => {}).getState(deviceId);
+      setTimeout(poll, 4000);
+    }
+    function vote(answer) {
+      sending = true;
+      $('yes').disabled = $('no').disabled = true;
+      $('msg').textContent = '送信中…';
+      google.script.run
+        .withSuccessHandler((s) => { sending = false; render(s); })
+        .withFailureHandler((e) => { sending = false; $('msg').textContent = e.message; $('yes').disabled = $('no').disabled = false; })
+        .vote(deviceId, answer);
+    }
+    $('yes').onclick = () => vote('yes');
+    $('no').onclick = () => vote('no');
+    poll();
+  </script>
+<? } ?>
+</body>
+</html>
