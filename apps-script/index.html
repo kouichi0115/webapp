@@ -40,7 +40,10 @@ h1 { font-size: 1.6rem; text-align: center; margin: 0 0 24px; line-height: 1.4; 
     <div class="bar"><div class="yes" id="yesBar" style="width:0"></div><div class="no" id="noBar" style="width:0"></div></div>
     <div class="total">回答数 合計 <b id="total">0</b> 件　<span class="status" id="status"></span></div>
   </div>
-  <div class="card hidden" id="controls">
+  <div class="card" id="controls">
+    <div class="controls">
+      <input id="pw" type="password" placeholder="パスワード（Code.gs の ADMIN_PASSWORD）">
+    </div>
     <div class="controls">
       <input id="qInput" placeholder="新しい質問を入力（変更すると集計はリセット）">
       <button id="setQ">質問を変更</button>
@@ -65,22 +68,42 @@ h1 { font-size: 1.6rem; text-align: center; margin: 0 0 24px; line-height: 1.4; 
       $('status').textContent = s.open ? '受付中' : '受付終了';
       $('status').style.background = s.open ? '#2b8a3e' : '#7b8794';
       $('toggle').textContent = s.open ? '受付を終了' : '受付を再開';
-      $('controls').classList.toggle('hidden', !s.isTeacher);
     }
     function poll() {
       google.script.run.withSuccessHandler((s) => { render(s); setTimeout(poll, 2000); })
         .withFailureHandler(() => setTimeout(poll, 5000)).getSummary();
     }
-    function admin(action, q) {
+    try { $('pw').value = localStorage.getItem('adminPw') || ''; } catch (e) {}
+    function admin(action, q, done) {
+      const pw = $('pw').value;
+      if (!pw) { $('msg').textContent = 'パスワードを入力してください'; return; }
       $('msg').textContent = '処理中…';
-      google.script.run.withSuccessHandler((s) => { render(s); $('msg').textContent = ''; })
-        .withFailureHandler((e) => { $('msg').textContent = e.message; }).admin(action, q);
+      google.script.run.withSuccessHandler((s) => {
+          render(s); $('msg').textContent = '完了しました';
+          try { localStorage.setItem('adminPw', pw); } catch (e) {}
+          if (done) done();
+        })
+        .withFailureHandler((e) => { $('msg').textContent = e.message; }).admin(action, q, pw);
     }
-    $('setQ').onclick = () => {
+    // 誤操作防止: 1回目で確認表示、3秒以内にもう一度押すと実行
+    function twoStep(btn, label, run) {
+      let armed = false, timer;
+      btn.onclick = () => {
+        if (!armed) {
+          armed = true; btn.textContent = label;
+          timer = setTimeout(() => { armed = false; btn.textContent = btn.dataset.text; }, 3000);
+          return;
+        }
+        clearTimeout(timer); armed = false; btn.textContent = btn.dataset.text; run();
+      };
+    }
+    $('setQ').dataset.text = '質問を変更'; $('reset').dataset.text = '集計をリセット';
+    twoStep($('setQ'), 'もう一度押すと変更（集計もリセット）', () => {
       const q = $('qInput').value.trim();
-      if (q && confirm('質問を変更すると集計がリセットされます。よろしいですか？')) { admin('question', q); $('qInput').value = ''; }
-    };
-    $('reset').onclick = () => confirm('集計をリセットしますか？') && admin('reset');
+      if (!q) { $('msg').textContent = '新しい質問を入力してください'; return; }
+      admin('question', q, () => { $('qInput').value = ''; });
+    });
+    twoStep($('reset'), 'もう一度押すとリセット', () => admin('reset'));
     $('toggle').onclick = () => admin(isOpen ? 'close' : 'open');
     poll();
   </script>

@@ -4,6 +4,9 @@
  *  集計画面: ウェブアプリのURL の末尾に ?page=admin
  */
 
+// ★ 集計画面のボタン（質問の変更・リセット・受付終了）用のパスワード。好きな文字に変更してください
+const ADMIN_PASSWORD = 'sensei';
+
 const props = PropertiesService.getScriptProperties();
 
 function doGet(e) {
@@ -23,11 +26,6 @@ function voterKey_(deviceId) {
   return 'v_' + Utilities.base64EncodeWebSafe(digest);
 }
 
-function isTeacher_() {
-  const me = Session.getEffectiveUser().getEmail();
-  const viewer = Session.getActiveUser().getEmail();
-  return !!viewer && viewer === me;
-}
 
 function summary_(all) {
   all = all || props.getProperties();
@@ -63,13 +61,11 @@ function vote(deviceId, answer) {
 }
 
 function getSummary() {
-  const s = summary_();
-  s.isTeacher = isTeacher_();
-  return s;
+  return summary_();
 }
 
-function admin(action, question) {
-  if (!isTeacher_()) throw new Error('この操作は作成者（先生）のみ可能です');
+function admin(action, question, password) {
+  if (String(password) !== String(ADMIN_PASSWORD)) throw new Error('パスワードが違います');
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
