@@ -57,25 +57,31 @@
   #pad { display: none; flex: none; justify-content: space-between; align-items: center; gap: 16px; padding-block: 12px 18px; }
   body.touch #pad { display: flex; }
   #dpad {
-    width: 168px; height: 84px; border-radius: 42px; position: relative; touch-action: none;
+    width: 216px; height: 104px; border-radius: 52px; position: relative; touch-action: none;
     background: color-mix(in srgb, var(--cream) 14%, transparent);
     border: 1.5px solid color-mix(in srgb, var(--cream) 35%, transparent);
   }
   #dpad .arrow { position: absolute; top: 50%; width: 0; height: 0; transform: translateY(-50%);
-    border-top: 14px solid transparent; border-bottom: 14px solid transparent; opacity: .85; }
-  #dpad .arrow.l { left: 26px; border-right: 20px solid var(--cream); }
-  #dpad .arrow.r { right: 26px; border-left: 20px solid var(--cream); }
+    border-top: 18px solid transparent; border-bottom: 18px solid transparent; opacity: .85; }
+  #dpad .arrow.l { left: 34px; border-right: 26px solid var(--cream); }
+  #dpad .arrow.r { right: 34px; border-left: 26px solid var(--cream); }
   #dpad.on-l .arrow.l, #dpad.on-r .arrow.r { opacity: 1; filter: drop-shadow(0 0 6px var(--juice)); }
-  #dpad::after { content: ""; position: absolute; left: 50%; top: 18px; bottom: 18px; width: 1.5px;
+  #dpad::after { content: ""; position: absolute; left: 50%; top: 22px; bottom: 22px; width: 1.5px;
     background: color-mix(in srgb, var(--cream) 30%, transparent); }
-  #acts { display: flex; gap: 14px; align-items: flex-end; }
+  #acts { display: flex; gap: 16px; align-items: flex-end; }
   #acts button {
     border-radius: 50%; border: 2px solid var(--ink); font-family: var(--font-display);
-    font-size: 13px; font-weight: 500; color: var(--ink); touch-action: none; cursor: pointer; padding: 0;
+    font-size: 15px; font-weight: 500; color: var(--ink); touch-action: none; cursor: pointer; padding: 0;
   }
   #acts button.on { transform: scale(.94); filter: brightness(1.15); }
-  #acts [data-act="throw"] { width: 66px; height: 66px; background: #f0868b; margin-bottom: 26px; }
-  #acts [data-act="jump"] { width: 80px; height: 80px; background: var(--leaf); }
+  #acts [data-act="throw"] { width: 84px; height: 84px; background: #f0868b; margin-bottom: 32px; }
+  #acts [data-act="jump"] { width: 104px; height: 104px; background: var(--leaf); }
+  @media (max-width: 400px) {
+    #dpad { width: 176px; height: 96px; }
+    #acts { gap: 10px; }
+    #acts [data-act="throw"] { width: 76px; height: 76px; }
+    #acts [data-act="jump"] { width: 96px; height: 96px; }
+  }
   @media (orientation: portrait) {
     #stage { align-items: flex-start; padding-top: 4px; }
     body.touch #stage { align-items: center; }
