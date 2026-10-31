@@ -74,12 +74,17 @@
     font-size: 15px; font-weight: 500; color: var(--ink); touch-action: none; cursor: pointer; padding: 0;
   }
   #acts button.on { transform: scale(.94); filter: brightness(1.15); }
-  #acts [data-act="throw"] { width: 84px; height: 84px; background: #f0868b; margin-bottom: 32px; }
+  #acts .col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  #acts [data-act="throw"] { width: 84px; height: 84px; background: #f0868b; }
+  #acts [data-act="special"] { width: 62px; height: 62px; font-size: 13px; background: #d9cfa6; opacity: .55; }
+  #acts [data-act="special"].ready { background: var(--juice); opacity: 1; box-shadow: 0 0 16px var(--juice); animation: glow 1s ease-in-out infinite alternate; }
+  @keyframes glow { from { box-shadow: 0 0 6px var(--juice); } to { box-shadow: 0 0 22px var(--juice); } }
   #acts [data-act="jump"] { width: 104px; height: 104px; background: var(--leaf); }
   @media (max-width: 400px) {
     #dpad { width: 176px; height: 96px; }
     #acts { gap: 10px; }
     #acts [data-act="throw"] { width: 76px; height: 76px; }
+    #acts [data-act="special"] { width: 56px; height: 56px; }
     #acts [data-act="jump"] { width: 96px; height: 96px; }
   }
   @media (orientation: portrait) {
@@ -96,7 +101,7 @@
     }
     body.touch #pad > * { pointer-events: auto; opacity: .78; }
   }
-  @media (prefers-reduced-motion: reduce) { #acts button.on { transform: none; } }
+  @media (prefers-reduced-motion: reduce) { #acts button.on { transform: none; } #acts [data-act="special"].ready { animation: none; } }
 </style>
 
 <div id="app">
@@ -115,7 +120,10 @@
   <div id="pad">
     <div id="dpad" aria-label="左右に移動"><span class="arrow l"></span><span class="arrow r"></span></div>
     <div id="acts">
-      <button type="button" data-act="throw" aria-label="りんごをなげる">なげる</button>
+      <div class="col">
+        <button type="button" data-act="special" id="btnSpecial" aria-label="ひっさつ技 りんごの雨">ひっさつ</button>
+        <button type="button" data-act="throw" aria-label="りんごをなげる">なげる</button>
+      </div>
       <button type="button" data-act="jump" aria-label="ジャンプ">ジャンプ</button>
     </div>
   </div>
@@ -210,6 +218,8 @@ const SONGS = {
   midboss: { tempo: 0.13, mel: [62,0,62,65, 62,0,67,0, 62,0,62,68, 67,0,65,0, 62,65,69,65, 62,65,70,69, 67,65,64,62, 61,0,0,0],
            bass: [38,50,38,50, 38,50,38,50, 36,48,36,48, 37,49,37,49, 38,50,38,50, 34,46,34,46, 33,45,33,45, 33,45,33,45] },
 };
+SFX.ready = () => [1047, 1319, 1568].forEach((f, i) => tone(f, 0.12, 'triangle', 0.07, null, now() + i * 0.06));
+SFX.special = () => [523, 659, 784, 1047, 1319, 1568, 2093].forEach((f, i) => tone(f, 0.16, 'square', 0.05, null, now() + i * 0.05));
 SFX.spring = () => tone(260, 0.28, 'sine', 0.09, 980);
 SFX.crumble = () => tone(130, 0.18, 'sawtooth', 0.04, 60);
 SFX.oneup = () => [784, 988, 1175, 1568, 1319, 1568].forEach((f, i) => tone(f, 0.1, 'square', 0.05, null, now() + i * 0.07));
@@ -245,6 +255,7 @@ const KEYMAP = {
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
   Space: 'jump', ArrowUp: 'jump', KeyZ: 'jump', KeyW: 'jump',
   KeyX: 'throw', KeyC: 'throw', KeyJ: 'throw',
+  KeyS: 'special', KeyV: 'special',
   Enter: 'start', KeyP: 'pause', Escape: 'pause',
 };
 const gp = {};
@@ -305,7 +316,7 @@ window.addEventListener('gamepadconnected', () => { padToast = 150; });
 function pollGamepad() {
   let pads = [];
   try { pads = navigator.getGamepads ? Array.from(navigator.getGamepads() || []) : []; } catch (e) { return; }
-  const cur = { left: false, right: false, jump: false, throw: false, start: false, back: false };
+  const cur = { left: false, right: false, jump: false, throw: false, special: false, start: false, back: false };
   let any = false;
   for (const p of pads) {
     if (!p || p.connected === false) continue;
@@ -314,7 +325,8 @@ function pollGamepad() {
     if (ax < -0.35 || b(14)) cur.left = true;
     if (ax > 0.35 || b(15)) cur.right = true;
     if (b(0) || b(12)) cur.jump = true;
-    if (b(1) || b(2) || b(3) || b(5) || b(7)) cur.throw = true;
+    if (b(1) || b(2) || b(5) || b(7)) cur.throw = true;
+    if (b(3) || b(4) || b(6)) cur.special = true;
     if (b(9)) cur.start = true;
     if (b(8)) cur.back = true;
     if (Math.abs(ax) > 0.35 || p.buttons.some(x => x && x.pressed)) any = true;
@@ -323,6 +335,7 @@ function pollGamepad() {
   gp.left = cur.left; gp.right = cur.right; gp.jump = cur.jump; gp.throw = cur.throw;
   if (cur.jump && !gpPrev.jump) jp.jump = true;
   if (cur.throw && !gpPrev.throw) jp.throw = true;
+  if (cur.special && !gpPrev.special) jp.special = true;
   if (cur.start && !gpPrev.start) { if (G.state === 'play' || G.state === 'pause') jp.pause = true; else jp.start = true; }
   if (cur.back && !gpPrev.back) jp.back = true;
   gpPrev = cur;
@@ -574,7 +587,7 @@ const STAGES = [
 // ===== ゲーム状態 =====
 const G = {
   state: 'title', stageIdx: 0, score: 0, lives: 3, hi: loadHi(), t: 0, timer: 0,
-  shake: 0, cam: 0, checkpoint: null, ammo: 3, msg: null, combo: 0, appleTimer: 0,
+  shake: 0, cam: 0, checkpoint: null, ammo: 3, msg: null, combo: 0, appleTimer: 0, gauge: 0, rain: null,
 };
 let L = null, P = null, enemies = [], items = [], shots = [], hazards = [], parts = [], movers = [], boss = null;
 
@@ -682,12 +695,12 @@ function addScore(n, x, y) { G.score += n; if (x != null) floatText(x, y, '+' + 
 
 // ===== 流れ =====
 function startGame() {
-  G.score = 0; G.lives = 3; G.stageIdx = 0; G.ammo = 3; G.checkpoint = null;
+  G.score = 0; G.lives = 3; G.stageIdx = 0; G.ammo = 3; G.checkpoint = null; G.gauge = 0;
   SFX.start(); toIntro();
 }
-function toIntro() { stopBgm(); loadStage(G.stageIdx); G.state = 'intro'; G.timer = 130; }
+function toIntro() { stopBgm(); G.rain = null; rainDrops = []; loadStage(G.stageIdx); G.state = 'intro'; G.timer = 130; }
 function hurtPlayer() {
-  if (P.inv > 0 || G.state !== 'play') return;
+  if (P.inv > 0 || G.state !== 'play' || G.rain) return;
   P.hp--; P.inv = 100; SFX.hurt(); if (padActive) rumble();
   P.vx = -P.face * 3; P.vy = -5; P.onGround = false; P.onMover = null; G.shake = 8;
   if (P.hp <= 0) killPlayer();
@@ -708,6 +721,7 @@ function stageClear() {
 // ===== 更新 =====
 function update() {
   pollGamepad();
+  if (btnSpecial) { const rd = G.gauge >= 100; if (btnSpecial.classList.contains('ready') !== rd) btnSpecial.classList.toggle('ready', rd); }
   if (padToast > 0) padToast--;
   G.t++;
   if (G.shake > 0) G.shake--;
@@ -775,8 +789,55 @@ function updateMover(m) {
   m.vx = nx - m.x; m.vy = ny - m.y; m.x = nx; m.y = ny;
 }
 
+// ===== 必殺技「りんごの雨」 =====
+let rainDrops = [];
+const btnSpecial = document.getElementById('btnSpecial');
+function addGauge(n) {
+  if (G.rain || G.gauge >= 100) return;
+  G.gauge = Math.min(100, G.gauge + n);
+  if (G.gauge >= 100) { SFX.ready(); if (P) floatText(P.x + P.w / 2, P.y - 22, 'ひっさつ OK!', '#f3d75a'); }
+}
+function startRain() {
+  G.gauge = 0; G.rain = { t: 0 }; rainDrops = [];
+  P.throwT = 40; SFX.special();
+}
+function updateRain() {
+  const R = G.rain; R.t++;
+  if (R.t < 70 && Math.random() < 0.65) {
+    rainDrops.push({ x: G.cam + Math.random() * VW, y: -20 - Math.random() * 40, vy: 5 + Math.random() * 4, r: 5 + Math.random() * 5, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3 });
+  }
+  for (const d of rainDrops) { d.y += d.vy; d.rot += d.vr; }
+  rainDrops = rainDrops.filter(d => {
+    if (d.y < VH + 20) return true;
+    return false;
+  });
+  if (R.t % 5 === 0 && R.t < 80) tone(700 + Math.random() * 500, 0.06, 'triangle', 0.04);
+  if (R.t === 30) {
+    for (const e of enemies) {
+      if (e.alive && e.x + e.w > G.cam - 20 && e.x < G.cam + VW + 20) killEnemyByShot(e, { vx: e.x > P.x ? 1 : -1 });
+    }
+    hazards = [];
+    if (boss && boss.st !== 'down' && boss.st !== 'gone' && boss.st !== 'enter') {
+      for (let i = 0; i < 2 && boss.hp > 0; i++) { boss.inv = 0; damageBoss(); }
+    }
+    G.shake = 14;
+  }
+  if (R.t === 60) {
+    for (let i = 0; i < 3; i++) {
+      const ax = clamp(P.x + (i - 1) * 50 + P.w / 2 - 8, G.cam + 10, G.cam + VW - 30);
+      items.push({ type: 'apple', x: ax, y: P.y - 30, w: 16, h: 16, t: 0 });
+    }
+  }
+  if (R.t >= 110) { G.rain = null; rainDrops = []; }
+}
+
 function updatePlay() {
   for (const m of movers) updateMover(m);
+  if (jp.special && !G.rain) {
+    if (G.gauge >= 100) startRain();
+    else { SFX.empty(); floatText(P.x + P.w / 2, P.y - 16, 'ゲージがたりない！', '#f0868b'); }
+  }
+  if (G.rain) updateRain();
   updatePlayer();
   if (G.state !== 'play') return;
   updateCrumbles();
@@ -935,6 +996,7 @@ function updateEnemies() {
         G.combo++;
         addScore(100 * Math.min(8, G.combo), e.x + e.w / 2, e.y - 6);
         SFX.stomp(); burst(e.x + e.w / 2, e.y + e.h / 2, '#fbf5e8', 6, 2);
+        addGauge(15);
       } else {
         hurtPlayer();
       }
@@ -947,6 +1009,7 @@ function killEnemyByShot(e, s) {
   e.alive = false; e.dead = 60; e.flip = true; e.vy = -5; e.vx = s.vx > 0 ? 1.5 : -1.5;
   addScore(e.type === 'spiky' ? 200 : 100, e.x + e.w / 2, e.y - 6);
   SFX.kill(); burst(e.x + e.w / 2, e.y + e.h / 2, '#e2434b', 6, 2);
+  addGauge(15);
 }
 
 function updateShots() {
@@ -989,7 +1052,7 @@ function updateItems() {
     if (it.got) continue;
     if (!overlap(P, it)) continue;
     if (it.type === 'apple') {
-      it.got = true; P.ammo = Math.min(99, P.ammo + 1); addScore(10);
+      it.got = true; P.ammo = Math.min(99, P.ammo + 1); addScore(10); addGauge(2);
       SFX.apple(); burst(it.x + 8, it.y + 8, '#f3d75a', 6, 1.5);
     } else if (it.type === 'juice') {
       it.got = true;
@@ -1027,7 +1090,7 @@ function updateParts() {
 // ===== ボス：いじわるカラス =====
 function damageBoss() {
   if (boss.inv > 0) return;
-  boss.hp--; boss.inv = 50; G.shake = 10;
+  boss.hp--; boss.inv = 50; G.shake = 10; addGauge(10);
   SFX.boss(); burst(boss.x + boss.w / 2, boss.y + boss.h / 2, '#2b2733', 12, 3);
   addScore(300, boss.x + boss.w / 2, boss.y - 8);
   if (boss.hp <= 0) {
@@ -1771,6 +1834,16 @@ function drawHUD(c) {
   text(c, '×' + P.ammo, 110, 23, 14, '#fbf5e8', 'left');
   drawTowa(c, 158, 34, { scale: 0.5, t: G.t });
   text(c, '×' + Math.max(0, G.lives), 170, 23, 14, '#fbf5e8', 'left');
+  // ひっさつゲージ
+  const full = G.gauge >= 100;
+  c.fillStyle = 'rgba(25,32,24,0.45)'; roundRect(c, 8, 42, 214, 16, 8); c.fill();
+  text(c, 'ひっさつ', 16, 50, 10, full ? '#f3d75a' : '#e9f3dc', 'left', false);
+  c.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(c, 64, 46, 150, 8, 4); c.fill();
+  if (G.gauge > 0) {
+    c.fillStyle = full ? (Math.floor(G.t / 8) % 2 ? '#f3d75a' : '#fff1a8') : '#a6d79a';
+    roundRect(c, 64, 46, Math.max(8, 150 * G.gauge / 100), 8, 4); c.fill();
+  }
+  if (full) text(c, padActive ? 'Y でひっさつ！' : (document.body.classList.contains('touch') ? 'ひっさつボタン！' : 'S でひっさつ！'), 230, 50, 11, '#f3d75a', 'left');
   text(c, STAGES[G.stageIdx].name, VW / 2, 23, 14, '#fbf5e8', 'center');
   text(c, 'SCORE ' + String(G.score).padStart(6, '0'), VW - 14, 23, 14, '#fbf5e8', 'right');
   if (boss && boss.st !== 'gone' && boss.st !== 'enter') {
@@ -1818,7 +1891,7 @@ function drawWorld(c) {
   if (!blink) {
     drawTowa(c, P.x + P.w / 2, P.y + P.h + 1, {
       face: P.face, t: G.t, moving: Math.abs(P.vx) > 0.3, walk: P.walk, air: !P.onGround, vy: P.vy,
-      squash: P.squash, throwT: P.throwT, hurt: G.state === 'dying' || P.inv > 70, happy: G.state === 'clear',
+      squash: P.squash, throwT: P.throwT, hurt: G.state === 'dying' || P.inv > 70, happy: G.state === 'clear' || !!G.rain,
       rot: G.state === 'dying' ? Math.min(Math.PI, (110 - G.timer) * 0.06) : 0,
     });
   }
@@ -1842,6 +1915,13 @@ function drawWorld(c) {
       c.beginPath(); c.arc(x, y, 1 + hash(i + 5) * 1.6, 0, Math.PI * 2); c.fill();
     }
   }
+  if (G.rain) {
+    c.save(); c.translate(-Math.round(G.cam), 0);
+    for (const d of rainDrops) drawApple(c, d.x, d.y, d.r, d.rot);
+    c.restore();
+    if (G.rain.t < 16) { c.fillStyle = `rgba(255,252,230,${0.8 * (1 - G.rain.t / 16)})`; c.fillRect(0, 0, VW, VH); }
+    if (G.rain.t < 70) text(c, 'りんごの雨！', VW / 2, 120, 32, '#f3d75a', 'center');
+  }
   drawHUD(c);
 }
 function glowBackdrop(c) {
@@ -1860,8 +1940,8 @@ function drawTitle(c) {
   text(c, 'りんごをあつめて、いじわるカラスをやっつけよう', VW / 2, 104, 15, '#e9f3dc', 'center');
   drawTowa(c, VW / 2, 300 + Math.sin(G.t * 0.05) * 3, { scale: 3.1, t: G.t, hold: 'both' });
   if (Math.floor(G.t / 30) % 2 === 0) text(c, padActive ? 'A / START でスタート' : 'Enter / タップでスタート', VW / 2, 332, 17, '#f3d75a', 'center');
-  if (padActive) text(c, 'スティック/十字キー いどう　A ジャンプ　B りんごをなげる　START ポーズ', 16, VH - 12, 11, '#e9f3dc', 'left');
-  else if (!document.body.classList.contains('touch')) text(c, '← → いどう　Space ジャンプ　X りんごをなげる　コントローラーも使えます', 16, VH - 12, 11, '#e9f3dc', 'left');
+  if (padActive) text(c, 'スティック いどう　A ジャンプ　B なげる　Y ひっさつ　START ポーズ', 16, VH - 12, 11, '#e9f3dc', 'left');
+  else if (!document.body.classList.contains('touch')) text(c, '←→ いどう　Space ジャンプ　X なげる　S ひっさつ　コントローラーOK', 16, VH - 12, 11, '#e9f3dc', 'left');
   text(c, 'HI ' + String(G.hi).padStart(6, '0'), VW - 14, VH - 12, 12, '#e9f3dc', 'right');
 }
 function drawIntro(c) {
@@ -1873,6 +1953,7 @@ function drawIntro(c) {
   drawTowa(c, VW / 2 - 24, 250, { scale: 1.6, t: G.t });
   text(c, '× ' + G.lives, VW / 2 + 10, 228, 22, '#fbf5e8', 'left');
   text(c, S.tip || '', VW / 2, 300, 14, '#e9f3dc', 'center');
+  if (G.stageIdx === 0) text(c, 'てきを倒すと ひっさつゲージがたまるよ', VW / 2, 324, 13, '#f3d75a', 'center');
 }
 function drawEnding(c) {
   glowBackdrop(c);
