@@ -247,7 +247,8 @@ const KEYMAP = {
   KeyX: 'throw', KeyC: 'throw', KeyJ: 'throw',
   Enter: 'start', KeyP: 'pause', Escape: 'pause',
 };
-const held = a => !!(kb[a] || tc[a]);
+const gp = {};
+const held = a => !!(kb[a] || tc[a] || gp[a]);
 window.addEventListener('keydown', e => {
   const a = KEYMAP[e.code]; if (!a) return;
   e.preventDefault(); ensureAudio();
@@ -291,6 +292,50 @@ cv.addEventListener('pointerdown', e => { e.preventDefault(); ensureAudio(); jp.
 document.getElementById('btnPause').addEventListener('click', () => { ensureAudio(); jp.pause = true; });
 document.getElementById('btnMute').addEventListener('click', () => { ensureAudio(); setMuted(!muted); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && G.state === 'play') { G.state = 'pause'; stopBgm(); } });
+
+// ===== ゲームパッド（外部コントローラー） =====
+// ブラウザの決まりで、パッドはボタンを1回押したあとに使えるようになる
+let gpPrev = {}, padActive = false, padToast = 0;
+function onPadFound() {
+  if (!padActive) { padActive = true; padToast = 150; }
+  ensureAudio();
+  if (document.body.classList.contains('touch')) { document.body.classList.remove('touch'); resize(); }
+}
+window.addEventListener('gamepadconnected', () => { padToast = 150; });
+function pollGamepad() {
+  let pads = [];
+  try { pads = navigator.getGamepads ? Array.from(navigator.getGamepads() || []) : []; } catch (e) { return; }
+  const cur = { left: false, right: false, jump: false, throw: false, start: false, back: false };
+  let any = false;
+  for (const p of pads) {
+    if (!p || p.connected === false) continue;
+    const b = i => !!(p.buttons[i] && (p.buttons[i].pressed || p.buttons[i].value > 0.5));
+    const ax = p.axes[0] || 0;
+    if (ax < -0.35 || b(14)) cur.left = true;
+    if (ax > 0.35 || b(15)) cur.right = true;
+    if (b(0) || b(12)) cur.jump = true;
+    if (b(1) || b(2) || b(3) || b(5) || b(7)) cur.throw = true;
+    if (b(9)) cur.start = true;
+    if (b(8)) cur.back = true;
+    if (Math.abs(ax) > 0.35 || p.buttons.some(x => x && x.pressed)) any = true;
+  }
+  if (any) onPadFound();
+  gp.left = cur.left; gp.right = cur.right; gp.jump = cur.jump; gp.throw = cur.throw;
+  if (cur.jump && !gpPrev.jump) jp.jump = true;
+  if (cur.throw && !gpPrev.throw) jp.throw = true;
+  if (cur.start && !gpPrev.start) { if (G.state === 'play' || G.state === 'pause') jp.pause = true; else jp.start = true; }
+  if (cur.back && !gpPrev.back) jp.back = true;
+  gpPrev = cur;
+}
+function rumble() {
+  try {
+    for (const p of navigator.getGamepads ? navigator.getGamepads() : []) {
+      if (p && p.vibrationActuator && p.vibrationActuator.playEffect) {
+        p.vibrationActuator.playEffect('dual-rumble', { duration: 180, strongMagnitude: 0.6, weakMagnitude: 0.4 }).catch(() => {});
+      }
+    }
+  } catch (e) {}
+}
 
 // ===== 便利関数 =====
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -643,7 +688,7 @@ function startGame() {
 function toIntro() { stopBgm(); loadStage(G.stageIdx); G.state = 'intro'; G.timer = 130; }
 function hurtPlayer() {
   if (P.inv > 0 || G.state !== 'play') return;
-  P.hp--; P.inv = 100; SFX.hurt();
+  P.hp--; P.inv = 100; SFX.hurt(); if (padActive) rumble();
   P.vx = -P.face * 3; P.vy = -5; P.onGround = false; P.onMover = null; G.shake = 8;
   if (P.hp <= 0) killPlayer();
 }
@@ -662,6 +707,8 @@ function stageClear() {
 
 // ===== 更新 =====
 function update() {
+  pollGamepad();
+  if (padToast > 0) padToast--;
   G.t++;
   if (G.shake > 0) G.shake--;
   switch (G.state) {
@@ -706,7 +753,7 @@ function update() {
     }
     case 'gameover':
       G.timer--;
-      if (G.timer <= 0 && jp.pause) G.state = 'title';
+      if (G.timer <= 0 && (jp.pause || jp.back)) G.state = 'title';
       else if (G.timer <= 0 && (jp.start || jp.jump)) {
         G.score = 0; G.lives = 3; G.ammo = 3; G.checkpoint = null; SFX.start(); toIntro();
       }
@@ -1812,8 +1859,9 @@ function drawTitle(c) {
   text(c, 'TOWA様のぼうけん', VW / 2, 62, 44, '#fbf5e8', 'center', '#2f4a2c');
   text(c, 'りんごをあつめて、いじわるカラスをやっつけよう', VW / 2, 104, 15, '#e9f3dc', 'center');
   drawTowa(c, VW / 2, 300 + Math.sin(G.t * 0.05) * 3, { scale: 3.1, t: G.t, hold: 'both' });
-  if (Math.floor(G.t / 30) % 2 === 0) text(c, 'Enter / タップでスタート', VW / 2, 332, 17, '#f3d75a', 'center');
-  if (!document.body.classList.contains('touch')) text(c, '← → いどう　Space ジャンプ　X りんごをなげる', 16, VH - 12, 11, '#e9f3dc', 'left');
+  if (Math.floor(G.t / 30) % 2 === 0) text(c, padActive ? 'A / START でスタート' : 'Enter / タップでスタート', VW / 2, 332, 17, '#f3d75a', 'center');
+  if (padActive) text(c, 'スティック/十字キー いどう　A ジャンプ　B りんごをなげる　START ポーズ', 16, VH - 12, 11, '#e9f3dc', 'left');
+  else if (!document.body.classList.contains('touch')) text(c, '← → いどう　Space ジャンプ　X りんごをなげる　コントローラーも使えます', 16, VH - 12, 11, '#e9f3dc', 'left');
   text(c, 'HI ' + String(G.hi).padStart(6, '0'), VW - 14, VH - 12, 12, '#e9f3dc', 'right');
 }
 function drawIntro(c) {
@@ -1833,7 +1881,7 @@ function drawEnding(c) {
   text(c, 'いじわるカラスをやっつけた！ 森にへいわがもどったよ', VW / 2, 98, 15, '#fbf5e8', 'center');
   drawTowa(c, VW / 2, 292 + Math.sin(G.t * 0.06) * 3, { scale: 3, t: G.t, hold: 'both', happy: true });
   text(c, 'SCORE ' + G.score + '　HI ' + G.hi, VW / 2, 318, 16, '#fbf5e8', 'center');
-  if (G.timer > 90 && Math.floor(G.t / 30) % 2 === 0) text(c, 'Enter / タップでタイトルへ', VW / 2, 342, 13, '#a6d79a', 'center');
+  if (G.timer > 90 && Math.floor(G.t / 30) % 2 === 0) text(c, padActive ? 'A / START でタイトルへ' : 'Enter / タップでタイトルへ', VW / 2, 342, 13, '#a6d79a', 'center');
 }
 
 function render() {
@@ -1847,7 +1895,7 @@ function render() {
       drawWorld(ctx);
       ctx.fillStyle = 'rgba(20,26,20,0.6)'; ctx.fillRect(0, 0, VW, VH);
       text(ctx, 'ひとやすみ中', VW / 2, VH / 2 - 14, 30, '#fbf5e8', 'center');
-      text(ctx, 'Enter / P / タップでつづける', VW / 2, VH / 2 + 24, 14, '#a6d79a', 'center');
+      text(ctx, padActive ? 'START でつづける' : 'Enter / P / タップでつづける', VW / 2, VH / 2 + 24, 14, '#a6d79a', 'center');
       break;
     case 'gameover':
       glowBackdrop(ctx);
@@ -1855,11 +1903,17 @@ function render() {
       text(ctx, 'ゲームオーバー', VW / 2, 110, 36, '#f0868b', 'center');
       text(ctx, 'SCORE ' + G.score + '　HI ' + G.hi, VW / 2, 290, 16, '#fbf5e8', 'center');
       if (G.timer <= 0) {
-        text(ctx, 'Enter / タップ：このステージからコンティニュー', VW / 2, 318, 14, '#a6d79a', 'center');
-        text(ctx, 'P / 一時停止ボタン：タイトルへ', VW / 2, 342, 12, '#e9f3dc', 'center');
+        text(ctx, padActive ? 'A / START：このステージからコンティニュー' : 'Enter / タップ：このステージからコンティニュー', VW / 2, 318, 14, '#a6d79a', 'center');
+        text(ctx, padActive ? 'SELECT：タイトルへ' : 'P / 一時停止ボタン：タイトルへ', VW / 2, 342, 12, '#e9f3dc', 'center');
       }
       break;
     case 'ending': drawEnding(ctx); break;
+  }
+  if (padToast > 0) {
+    ctx.globalAlpha = Math.min(1, padToast / 30);
+    ctx.fillStyle = 'rgba(25,32,24,0.8)'; roundRect(ctx, VW / 2 - 130, VH - 52, 260, 30, 12); ctx.fill();
+    text(ctx, 'コントローラーをつなぎました', VW / 2, VH - 37, 14, '#a6d79a', 'center', false);
+    ctx.globalAlpha = 1;
   }
 }
 
