@@ -654,8 +654,9 @@ function killPlayer() {
 }
 function stageClear() {
   G.state = 'clear'; G.timer = 170; stopBgm(); SFX.clear();
-  const bonus = P.hp * 300;
-  G.score += bonus; G.msg = { text: 'ステージクリア！', sub: 'HP ボーナス +' + bonus };
+  const bonus = P.hp * 300, appleBonus = P.ammo * 50;
+  G.score += bonus + appleBonus;
+  G.msg = { text: 'ステージクリア！', sub: 'HP ボーナス +' + bonus + '　りんごボーナス +' + appleBonus + '（' + P.ammo + '個×50）' };
   G.ammo = P.ammo;
 }
 
@@ -785,7 +786,7 @@ function updatePlayer() {
     const c = tileAt(r.head.x, r.head.y);
     if (c === 'Q') {
       L.g[r.head.y][r.head.x] = 'U';
-      P.ammo = Math.min(9, P.ammo + 1); addScore(10);
+      P.ammo = Math.min(99, P.ammo + 1); addScore(10);
       SFX.apple();
       parts.push({ x: r.head.x * T + 15, y: r.head.y * T - 6, vx: 0, vy: -2.2, life: 34, max: 34, apple: true, g: 0.1 });
       floatText(r.head.x * T + 15, r.head.y * T - 20, 'りんご +1', '#f3d75a');
@@ -941,7 +942,7 @@ function updateItems() {
     if (it.got) continue;
     if (!overlap(P, it)) continue;
     if (it.type === 'apple') {
-      it.got = true; P.ammo = Math.min(9, P.ammo + 1); addScore(10);
+      it.got = true; P.ammo = Math.min(99, P.ammo + 1); addScore(10);
       SFX.apple(); burst(it.x + 8, it.y + 8, '#f3d75a', 6, 1.5);
     } else if (it.type === 'juice') {
       it.got = true;
