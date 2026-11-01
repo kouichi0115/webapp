@@ -153,6 +153,7 @@ window.addEventListener('resize', resize);
 // ===== 保存（ハイスコア） =====
 function loadHi() { try { return parseInt(localStorage.getItem('towa-hi') || '0', 10) || 0; } catch (e) { return 0; } }
 function saveHi() {
+  if (cheatOn()) return;
   if (G.score > G.hi) G.hi = G.score;
   try { localStorage.setItem('towa-hi', String(G.hi)); } catch (e) {}
 }
@@ -260,7 +261,16 @@ const KEYMAP = {
 };
 const gp = {};
 const held = a => !!(kb[a] || tc[a] || gp[a]);
+const CHEAT_KEYS = { KeyT: 'T', KeyO: 'O', KeyW: 'W', KeyA: 'A' };
+const MENU_KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', Enter: 'start', Space: 'start', KeyZ: 'start', Escape: 'back', KeyX: 'back' };
 window.addEventListener('keydown', e => {
+  if (typeof G !== 'undefined' && G.state === 'cheat') {
+    const m = MENU_KEYS[e.code]; if (!m) return;
+    e.preventDefault(); if (!e.repeat) jp[m] = true; return;
+  }
+  if (typeof G !== 'undefined' && G.state === 'title' && CHEAT_KEYS[e.code]) {
+    e.preventDefault(); ensureAudio(); pushCheatSeq(CHEAT_KEYS[e.code]); return;
+  }
   const a = KEYMAP[e.code]; if (!a) return;
   e.preventDefault(); ensureAudio();
   if (!e.repeat) jp[a] = true;
@@ -299,7 +309,15 @@ document.querySelectorAll('#acts button').forEach(b => {
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => b.addEventListener(t, up));
   b.addEventListener('contextmenu', e => e.preventDefault());
 });
-cv.addEventListener('pointerdown', e => { e.preventDefault(); ensureAudio(); jp.start = true; });
+let towaTaps = 0, towaTapT = 0;
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault(); ensureAudio();
+  const r = cv.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width * VW, y = (e.clientY - r.top) / r.height * VH;
+  if (G.state === 'cheat') { G.menuTap = { x, y }; return; }
+  if (G.state === 'title' && Math.abs(x - VW / 2) < 75 && y > 175 && y < 310) { towaTaps++; towaTapT = G.t; return; }
+  jp.start = true;
+});
 document.getElementById('btnPause').addEventListener('click', () => { ensureAudio(); jp.pause = true; });
 document.getElementById('btnMute').addEventListener('click', () => { ensureAudio(); setMuted(!muted); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && G.state === 'play') { G.state = 'pause'; stopBgm(); } });
@@ -322,6 +340,9 @@ function pollGamepad() {
     if (!p || p.connected === false) continue;
     const b = i => !!(p.buttons[i] && (p.buttons[i].pressed || p.buttons[i].value > 0.5));
     const ax = p.axes[0] || 0;
+    const ay = p.axes[1] || 0;
+    if (ay < -0.5 || b(12)) cur.up = true;
+    if (ay > 0.5 || b(13)) cur.down = true;
     if (ax < -0.35 || b(14)) cur.left = true;
     if (ax > 0.35 || b(15)) cur.right = true;
     if (b(0) || b(12)) cur.jump = true;
@@ -336,6 +357,10 @@ function pollGamepad() {
   if (cur.jump && !gpPrev.jump) jp.jump = true;
   if (cur.throw && !gpPrev.throw) jp.throw = true;
   if (cur.special && !gpPrev.special) jp.special = true;
+  if (cur.left && !gpPrev.left) jp.padL = true;
+  if (cur.right && !gpPrev.right) jp.padR = true;
+  if (cur.up && !gpPrev.up) jp.up = true;
+  if (cur.down && !gpPrev.down) jp.down = true;
   if (cur.start && !gpPrev.start) { if (G.state === 'play' || G.state === 'pause') jp.pause = true; else jp.start = true; }
   if (cur.back && !gpPrev.back) jp.back = true;
   gpPrev = cur;
@@ -588,6 +613,7 @@ const STAGES = [
 const G = {
   state: 'title', stageIdx: 0, score: 0, lives: 3, hi: loadHi(), t: 0, timer: 0,
   shake: 0, cam: 0, checkpoint: null, ammo: 3, msg: null, combo: 0, appleTimer: 0, gauge: 0, rain: null,
+  cheat: { inv: false, inf: false, lives: false, air: false, stage: 0 }, menuSel: 0, menuTap: null,
 };
 let L = null, P = null, enemies = [], items = [], shots = [], hazards = [], parts = [], movers = [], boss = null;
 
@@ -621,7 +647,7 @@ function loadStage(i) {
     items.forEach(it => { if (it.type === 'check' && it.tx === cp.x) it.on = true; });
   }
   P = { x: sx * T + 6, y: (sy + 1) * T - 26, w: 18, h: 26, vx: 0, vy: 0, face: 1, onGround: false, onMover: null,
-        hp: 3, inv: 0, ammo: Math.max(3, G.ammo), thrCd: 0, throwT: 0, jbuf: 0, coyote: 0, walk: 0, squash: 0, pb: 0, onIce: false };
+        hp: 3, inv: 0, ammo: Math.max(3, G.ammo), thrCd: 0, throwT: 0, jbuf: 0, coyote: 0, walk: 0, squash: 0, pb: 0, onIce: false, safeX: sx * T + 6, safeY: (sy + 1) * T - 26 };
   if (S.boss === 'crow') {
     boss = { kind: 'crow', x: 14 * T, y: -70, w: 54, h: 36, hp: 6, max: 6, st: 'enter', t: 0, inv: 0, dir: -1, vx: 0, vy: 0, face: -1, rot: 0 };
   } else if (S.boss === 'mole') {
@@ -695,12 +721,12 @@ function addScore(n, x, y) { G.score += n; if (x != null) floatText(x, y, '+' + 
 
 // ===== 流れ =====
 function startGame() {
-  G.score = 0; G.lives = 3; G.stageIdx = 0; G.ammo = 3; G.checkpoint = null; G.gauge = 0;
+  G.score = 0; G.lives = G.cheat.lives ? 99 : 3; G.stageIdx = 0; G.ammo = 3; G.checkpoint = null; G.gauge = 0;
   SFX.start(); toIntro();
 }
 function toIntro() { stopBgm(); G.rain = null; rainDrops = []; loadStage(G.stageIdx); G.state = 'intro'; G.timer = 130; }
 function hurtPlayer() {
-  if (P.inv > 0 || G.state !== 'play' || G.rain) return;
+  if (P.inv > 0 || G.state !== 'play' || G.rain || G.cheat.inv) return;
   P.hp--; P.inv = 100; SFX.hurt(); if (padActive) rumble();
   P.vx = -P.face * 3; P.vy = -5; P.onGround = false; P.onMover = null; G.shake = 8;
   if (P.hp <= 0) killPlayer();
@@ -727,7 +753,15 @@ function update() {
   if (G.shake > 0) G.shake--;
   switch (G.state) {
     case 'title':
-      if (jp.start || jp.jump) { ensureAudio(); startGame(); }
+      if (jp.padL) pushCheatSeq('L');
+      if (jp.padR) pushCheatSeq('R');
+      if (jp.special) pushCheatSeq('Y');
+      if (towaTaps >= 5) { towaTaps = 0; openCheat(); break; }
+      if (towaTaps > 0 && G.t - towaTapT > 24) { towaTaps = 0; jp.start = true; }
+      if (G.state === 'title' && towaTaps === 0 && (jp.start || jp.jump)) { ensureAudio(); startGame(); }
+      break;
+    case 'cheat':
+      updateCheatMenu();
       break;
     case 'intro':
       G.timer--;
@@ -745,7 +779,8 @@ function update() {
     case 'dying':
       G.timer--; P.vy += 0.4; P.y += P.vy; updateParts();
       if (G.timer <= 0) {
-        G.lives--; G.ammo = Math.max(3, P.ammo);
+        if (!G.cheat.lives) G.lives--;
+        G.ammo = Math.max(3, P.ammo);
         if (G.lives < 0) { G.state = 'gameover'; G.timer = 60; saveHi(); SFX.over(); }
         else toIntro();
       }
@@ -769,7 +804,7 @@ function update() {
       G.timer--;
       if (G.timer <= 0 && (jp.pause || jp.back)) G.state = 'title';
       else if (G.timer <= 0 && (jp.start || jp.jump)) {
-        G.score = 0; G.lives = 3; G.ammo = 3; G.checkpoint = null; SFX.start(); toIntro();
+        G.score = 0; G.lives = G.cheat.lives ? 99 : 3; G.ammo = 3; G.checkpoint = null; SFX.start(); toIntro();
       }
       break;
     case 'ending':
@@ -787,6 +822,83 @@ function updateMover(m) {
   const k = 0.5 - 0.5 * Math.cos(m.t * 2 * Math.PI / m.period);
   const nx = m.bx + m.dx * T * k, ny = m.by + m.dy * T * k;
   m.vx = nx - m.x; m.vy = ny - m.y; m.x = nx; m.y = ny;
+}
+
+// ===== チート =====
+let cheatSeq = '';
+function cheatOn() { const c = G.cheat; return c.inv || c.inf || c.lives || c.air; }
+function pushCheatSeq(ch) {
+  cheatSeq = (cheatSeq + ch).slice(-6);
+  if (cheatSeq.endsWith('TOWA') || cheatSeq.endsWith('LRLRY')) { cheatSeq = ''; openCheat(); }
+}
+function openCheat() {
+  G.state = 'cheat'; G.menuSel = 0; G.menuTap = null; towaTaps = 0;
+  [880, 1175, 1568, 2093].forEach((f, i) => tone(f, 0.1, 'triangle', 0.07, null, now() + i * 0.07));
+}
+const CHEAT_ROWS = [
+  { key: 'inv', label: 'むてき' },
+  { key: 'inf', label: 'りんご・ゲージ むげん' },
+  { key: 'lives', label: 'ざんき 99' },
+  { key: 'air', label: '空中ジャンプ' },
+  { key: 'stage', label: 'ステージ' },
+  { key: 'go', label: 'このステージから はじめる' },
+  { key: 'back', label: 'もどる' },
+];
+const MENU_Y0 = 86, MENU_DY = 32;
+function cheatActivate(i, dir) {
+  const row = CHEAT_ROWS[i], c = G.cheat;
+  if (row.key === 'stage') {
+    c.stage = (c.stage + (dir || 1) + STAGES.length) % STAGES.length; SFX.block();
+  } else if (row.key === 'go') {
+    G.score = 0; G.lives = c.lives ? 99 : 3; G.stageIdx = c.stage; G.ammo = 3; G.checkpoint = null; G.gauge = 0;
+    SFX.start(); toIntro();
+  } else if (row.key === 'back') {
+    G.state = 'title';
+  } else {
+    c[row.key] = !c[row.key]; c[row.key] ? SFX.check() : SFX.block();
+  }
+}
+function updateCheatMenu() {
+  const n = CHEAT_ROWS.length;
+  if (jp.up) G.menuSel = (G.menuSel + n - 1) % n;
+  if (jp.down) G.menuSel = (G.menuSel + 1) % n;
+  if (jp.left || jp.padL) { if (CHEAT_ROWS[G.menuSel].key === 'stage') cheatActivate(G.menuSel, -1); }
+  if (jp.right || jp.padR) { if (CHEAT_ROWS[G.menuSel].key === 'stage') cheatActivate(G.menuSel, 1); }
+  if (jp.start || jp.jump) cheatActivate(G.menuSel, 1);
+  else if (jp.back || jp.pause) G.state = 'title';
+  if (G.menuTap) {
+    const { x, y } = G.menuTap; G.menuTap = null;
+    const i = Math.floor((y - MENU_Y0 + MENU_DY / 2) / MENU_DY);
+    if (i >= 0 && i < n && x > 90 && x < VW - 90) {
+      G.menuSel = i;
+      cheatActivate(i, CHEAT_ROWS[i].key === 'stage' && x < VW / 2 ? -1 : 1);
+    }
+  }
+}
+function drawCheatMenu(c) {
+  glowBackdrop(c);
+  c.fillStyle = 'rgba(20,26,20,0.75)'; roundRect(c, 90, 20, VW - 180, VH - 40, 16); c.fill();
+  c.strokeStyle = 'rgba(243,215,90,0.5)'; c.lineWidth = 1.5; c.stroke();
+  text(c, 'ひみつのチート', VW / 2, 50, 24, '#f3d75a', 'center');
+  CHEAT_ROWS.forEach((row, i) => {
+    const y = MENU_Y0 + i * MENU_DY, sel = i === G.menuSel;
+    if (sel) { c.fillStyle = 'rgba(166,215,154,0.22)'; roundRect(c, 104, y - 14, VW - 208, 28, 9); c.fill(); }
+    const col = sel ? '#fbf5e8' : '#cfdcc4';
+    if (row.key === 'stage') {
+      const st = STAGES[G.cheat.stage];
+      text(c, row.label, 124, y, 15, col, 'left', false);
+      text(c, '◀  ' + (G.cheat.stage + 1) + '. ' + st.name + '  ▶', VW - 124, y, 15, '#f3d75a', 'right', false);
+    } else if (row.key === 'go' || row.key === 'back') {
+      text(c, row.label, VW / 2, y, 15, row.key === 'go' ? '#a6d79a' : col, 'center', false);
+    } else {
+      const on = G.cheat[row.key];
+      text(c, row.label, 124, y, 15, col, 'left', false);
+      c.fillStyle = on ? '#a6d79a' : 'rgba(255,255,255,0.12)'; roundRect(c, VW - 184, y - 10, 60, 20, 10); c.fill();
+      text(c, on ? 'ON' : 'OFF', VW - 154, y, 12, on ? '#1b231b' : '#cfdcc4', 'center', false);
+    }
+  });
+  text(c, '↑↓ えらぶ　Enter / A / タップ きりかえ　Esc もどる', VW / 2, VH - 32, 11, '#cfdcc4', 'center', false);
+  if (cheatOn()) text(c, 'チート中はハイスコアが記録されません', VW / 2, VH - 50, 10, '#f0b4a8', 'center', false);
 }
 
 // ===== 必殺技「りんごの雨」 =====
@@ -833,6 +945,7 @@ function updateRain() {
 
 function updatePlay() {
   for (const m of movers) updateMover(m);
+  if (G.cheat.inf) { P.ammo = 99; if (!G.rain) G.gauge = 100; }
   if (jp.special && !G.rain) {
     if (G.gauge >= 100) startRain();
     else { SFX.empty(); floatText(P.x + P.w / 2, P.y - 16, 'ゲージがたりない！', '#f0868b'); }
@@ -863,7 +976,7 @@ function updatePlayer() {
 
   if (jp.jump) P.jbuf = 8; else if (P.jbuf > 0) P.jbuf--;
   if (P.onGround) P.coyote = 6; else if (P.coyote > 0) P.coyote--;
-  if (P.jbuf > 0 && P.coyote > 0) {
+  if (P.jbuf > 0 && (P.coyote > 0 || G.cheat.air)) {
     P.vy = -9.6; P.jbuf = 0; P.coyote = 0; P.onGround = false; P.onMover = null; P.squash = -0.3; SFX.jump();
   }
   if (!held('jump') && P.vy < -3.5 && !P.bounce) P.vy = -3.5;
@@ -908,6 +1021,7 @@ function updatePlayer() {
   }
   // 足もとのタイル（ジャンプキノコ・くずれる足場・氷）
   P.onIce = false;
+  let safe = true;
   if (r.landed) {
     const fy = Math.floor((P.y + P.h + 1) / T);
     const fx0 = Math.floor((P.x + 2) / T), fx1 = Math.floor((P.x + P.w - 2) / T);
@@ -916,6 +1030,7 @@ function updatePlayer() {
       const c = tileAt(x, fy);
       if (c === 'S') spring = x;
       if (c === 'I') P.onIce = true;
+      if (c === 'C' || c === 'c') safe = false;
       if (c === 'C' && !crumbles.has(x + ',' + fy)) { crumbles.set(x + ',' + fy, { x, y: fy, t: 0, st: 'shake' }); SFX.crumble(); }
     }
     if (spring !== null && !onM) {
@@ -924,6 +1039,7 @@ function updatePlayer() {
       burst(P.x + P.w / 2, P.y + P.h, '#f3d75a', 6, 1.5);
     }
   }
+  if (r.landed && ground && !onM && safe) { P.safeX = P.x; P.safeY = P.y; }
   P.onGround = ground; P.onMover = onM;
   if (ground) G.combo = 0;
   if (ground && wasAir && fallV > 4) { P.squash = 0.25; burst(P.x + P.w / 2, P.y + P.h, 'rgba(240,230,210,0.8)', 4, 1); }
@@ -937,7 +1053,10 @@ function updatePlayer() {
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     if (tileAt(x, y) === '^' && overlap(P, { x: x * T + 4, y: y * T + 14, w: T - 8, h: T - 14 })) hurtPlayer();
   }
-  if (P.y > ROWS * T + 30) killPlayer();
+  if (P.y > ROWS * T + 30) {
+    if (G.cheat.inv) { P.x = P.safeX; P.y = P.safeY; P.vx = 0; P.vy = 0; P.inv = 60; P.onMover = null; }
+    else killPlayer();
+  }
 }
 
 const bumps = [];
@@ -1846,6 +1965,7 @@ function drawHUD(c) {
   if (full) text(c, padActive ? 'Y でひっさつ！' : (document.body.classList.contains('touch') ? 'ひっさつボタン！' : 'S でひっさつ！'), 230, 50, 11, '#f3d75a', 'left');
   text(c, STAGES[G.stageIdx].name, VW / 2, 23, 14, '#fbf5e8', 'center');
   text(c, 'SCORE ' + String(G.score).padStart(6, '0'), VW - 14, 23, 14, '#fbf5e8', 'right');
+  if (cheatOn()) text(c, 'CHEAT', VW - 14, 44, 11, '#f0b4a8', 'right');
   if (boss && boss.st !== 'gone' && boss.st !== 'enter') {
     text(c, boss.kind === 'mole' ? 'いばりモグラ' : 'いじわるカラス', VW / 2, 46, 12, '#f0b4a8', 'center');
     c.fillStyle = 'rgba(25,20,30,0.6)'; roundRect(c, VW / 2 - 80, 56, 160, 8, 4); c.fill();
@@ -1938,7 +2058,7 @@ function drawTitle(c) {
   c.fillStyle = g; c.fillRect(0, 0, VW, VH);
   text(c, 'TOWA様のぼうけん', VW / 2, 62, 44, '#fbf5e8', 'center', '#2f4a2c');
   text(c, 'りんごをあつめて、いじわるカラスをやっつけよう', VW / 2, 104, 15, '#e9f3dc', 'center');
-  drawTowa(c, VW / 2, 300 + Math.sin(G.t * 0.05) * 3, { scale: 3.1, t: G.t, hold: 'both' });
+  drawTowa(c, VW / 2, 300 + Math.sin(G.t * 0.05) * 3 - (towaTaps > 0 && G.t - towaTapT < 8 ? 8 : 0), { scale: 3.1, t: G.t, hold: 'both' });
   if (Math.floor(G.t / 30) % 2 === 0) text(c, padActive ? 'A / START でスタート' : 'Enter / タップでスタート', VW / 2, 332, 17, '#f3d75a', 'center');
   if (padActive) text(c, 'スティック いどう　A ジャンプ　B なげる　Y ひっさつ　START ポーズ', 16, VH - 12, 11, '#e9f3dc', 'left');
   else if (!document.body.classList.contains('touch')) text(c, '←→ いどう　Space ジャンプ　X なげる　S ひっさつ　コントローラーOK', 16, VH - 12, 11, '#e9f3dc', 'left');
@@ -1970,6 +2090,7 @@ function render() {
   ctx.imageSmoothingEnabled = true;
   switch (G.state) {
     case 'title': drawTitle(ctx); break;
+    case 'cheat': drawCheatMenu(ctx); break;
     case 'intro': drawIntro(ctx); break;
     case 'play': case 'dying': case 'clear': drawWorld(ctx); break;
     case 'pause':
