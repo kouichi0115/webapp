@@ -1446,8 +1446,12 @@ function updateEnemies() {
         e.alive = false; e.dead = 30; e.flat = true;
         P.vy = held('jump') ? -9.5 : -6.5; P.bounce = true;
         G.combo++;
-        addScore(100 * Math.min(8, G.combo), e.x + e.w / 2, e.y - 6);
-        SFX.stomp(); burst(e.x + e.w / 2, e.y + e.h / 2, '#fbf5e8', 6, 2);
+        addScore(100 * 2 ** (Math.min(10, G.combo) - 1), e.x + e.w / 2, e.y - 6);
+        SFX.stomp();
+        if (G.combo >= 2) {
+          floatText(e.x + e.w / 2, e.y - 22, '×' + G.combo + ' COMBO', '#f3d75a');
+          tone(500 + Math.min(10, G.combo) * 90, 0.12, 'square', 0.05, null, now() + 0.06);
+        } burst(e.x + e.w / 2, e.y + e.h / 2, '#fbf5e8', 6, 2);
         addGauge(15);
       } else {
         hurtPlayer();
@@ -2603,7 +2607,7 @@ function drawHUD(c) {
     else text(c, nm + '（' + sw + ' できりかえ）', 16, 70, 10, '#e9f3dc', 'left');
   }
   text(c, STAGES[G.stageIdx].name, VW / 2, 23, 14, '#fbf5e8', 'center');
-  text(c, 'SCORE ' + String(G.score).padStart(6, '0'), VW - 14, 23, 14, '#fbf5e8', 'right');
+  text(c, 'SCORE ' + String(G.score).padStart(7, '0'), VW - 14, 23, 14, '#fbf5e8', 'right');
   if (cheatOn()) text(c, 'CHEAT', VW - 14, 44, 11, '#f0b4a8', 'right');
   if (boss && boss.st !== 'gone' && boss.st !== 'enter') {
     text(c, boss.kind === 'mole' ? 'いばりモグラ' : boss.kind === 'king' ? 'くろくも大王' : 'いじわるカラス', VW / 2, 46, 12, '#f0b4a8', 'center');
