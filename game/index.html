@@ -450,7 +450,7 @@ const STAGES = [
     L.e('goal', 172, 9);
     return L;
   } },
-  { name: 'りんご畑', theme: 'orchard', tip: 'オレンジの キノコに のると 高く とべるよ', tip2: 'りんごを ぜんぶ取って ゴールすると ボーナスステージへ！', build() {
+  { name: 'りんご畑', theme: 'orchard', tip: 'オレンジの キノコに のると 高く とべるよ', tip2: 'イガグリは ふめない。りんごを なげよう', build() {
     const L = makeLevel(190);
     L.ground(0, 30, 2);
     L.apples([[6, 8], [7, 8], [8, 8]]);
@@ -486,7 +486,7 @@ const STAGES = [
     L.e('goal', 182, 9);
     return L;
   } },
-  { name: '木の上', theme: 'tree', tip: '動く丸太に のって すすもう', tip2: 'ハチは 上から ふむか、りんごで やっつけよう', build() {
+  { name: '木の上', theme: 'tree', tip: '動く丸太に のって すすもう', tip2: 'りんごを ぜんぶ取って ゴールすると ボーナスステージへ！', build() {
     const L = makeLevel(190);
     L.ground(0, 12, 2);
     L.apples([[6, 8], [7, 8]]);
@@ -560,7 +560,7 @@ const STAGES = [
     L.e('goal', 182, 9);
     return L;
   } },
-  { name: '夜の森', theme: 'night', tip: 'イガグリは ふめない。りんごを なげよう', tip2: 'トゲに さわると ダメージを うけるよ', build() {
+  { name: '夜の森', theme: 'night', tip: 'イガグリが たくさん。りんごを たっぷり 集めておこう', tip2: 'トゲに さわると ダメージを うけるよ', build() {
     const L = makeLevel(190);
     L.ground(0, 40, 2);
     L.apples([[5, 8], [6, 8], [7, 8], [8, 8]]);
