@@ -423,7 +423,7 @@ function makeLevel(w) {
 }
 
 const STAGES = [
-  { name: '森の小道', theme: 'day', tip: 'てきは ふんづけて やっつけよう', build() {
+  { name: '森の小道', theme: 'day', tip: 'てきは 上から ふんづけて やっつけよう', tip2: 'てきを倒すと ひっさつゲージが たまるよ（技は 5しゅるい）', build() {
     const L = makeLevel(180);
     L.ground(0, 28, 2);
     L.apples([[8, 8], [9, 8], [10, 8]]);
@@ -450,7 +450,7 @@ const STAGES = [
     L.e('goal', 172, 9);
     return L;
   } },
-  { name: 'りんご畑', theme: 'orchard', tip: 'キノコに のると 高くとべるよ', build() {
+  { name: 'りんご畑', theme: 'orchard', tip: 'オレンジの キノコに のると 高く とべるよ', tip2: 'りんごを ぜんぶ取って ゴールすると ボーナスステージへ！', build() {
     const L = makeLevel(190);
     L.ground(0, 30, 2);
     L.apples([[6, 8], [7, 8], [8, 8]]);
@@ -486,7 +486,7 @@ const STAGES = [
     L.e('goal', 182, 9);
     return L;
   } },
-  { name: '木の上', theme: 'tree', tip: '動く丸太に のってすすもう', build() {
+  { name: '木の上', theme: 'tree', tip: '動く丸太に のって すすもう', tip2: 'ハチは 上から ふむか、りんごで やっつけよう', build() {
     const L = makeLevel(190);
     L.ground(0, 12, 2);
     L.apples([[6, 8], [7, 8]]);
@@ -519,7 +519,7 @@ const STAGES = [
     L.start = { x: 2, y: 9 };
     return L;
   } },
-  { name: 'モグラのへや', theme: 'cave', song: 'midboss', boss: 'mole', tip: 'モグラが顔を出したら ふむか、りんごをなげよう', build() {
+  { name: 'モグラのへや', theme: 'cave', song: 'midboss', boss: 'mole', tip: 'モグラが 顔を出したら ふむか、りんごを 当てよう', tip2: 'なげてくる 石に 気をつけて', build() {
     const L = makeLevel(22);
     L.ground(0, 21, 2);
     L.fill(0, 21, 0, 1, '#');
@@ -530,7 +530,7 @@ const STAGES = [
     L.start = { x: 2, y: 9 };
     return L;
   } },
-  { name: '地下のどうくつ', theme: 'cave', tip: 'つらら石と くずれる足場に 気をつけて', build() {
+  { name: '地下のどうくつ', theme: 'cave', tip: 'つらら石は 真下に来ると 落ちてくるよ', tip2: 'ひびの入った 足場は 乗ると くずれるよ', build() {
     const L = makeLevel(190);
     L.fill(0, 189, 0, 1, '#');
     L.ground(0, 25, 2);
@@ -560,7 +560,7 @@ const STAGES = [
     L.e('goal', 182, 9);
     return L;
   } },
-  { name: '夜の森', theme: 'night', tip: 'イガグリは ふめない。りんごをなげよう', build() {
+  { name: '夜の森', theme: 'night', tip: 'イガグリは ふめない。りんごを なげよう', tip2: 'トゲに さわると ダメージを うけるよ', build() {
     const L = makeLevel(190);
     L.ground(0, 40, 2);
     L.apples([[5, 8], [6, 8], [7, 8], [8, 8]]);
@@ -591,7 +591,7 @@ const STAGES = [
     L.e('goal', 182, 9);
     return L;
   } },
-  { name: '雪の山', theme: 'snow', tip: '氷の上は つるつる すべるよ', build() {
+  { name: '雪の山', theme: 'snow', tip: '氷の上は つるつる すべるよ', tip2: '転がってくる 雪玉は ふんで わろう', build() {
     const L = makeLevel(200);
     L.ground(0, 24, 2);
     L.row(12, 24, 10, 'I');
@@ -625,7 +625,7 @@ const STAGES = [
     L.e('goal', 192, 9);
     return L;
   } },
-  { name: 'カラスの巣', theme: 'boss', boss: 'crow', tip: 'カラスが地面でへばったら ふんづけよう！', build() {
+  { name: 'カラスの巣', theme: 'boss', boss: 'crow', tip: 'カラスが 地面で へばったら ふんづけよう', tip2: 'りんごも 当たるよ。落としてくる 羽根に 気をつけて', build() {
     const L = makeLevel(22);
     L.ground(0, 21, 2);
     L.fill(0, 0, 0, 9, '#'); L.fill(21, 21, 0, 9, '#');
@@ -634,7 +634,7 @@ const STAGES = [
     L.start = { x: 3, y: 9 };
     return L;
   } },
-  { name: '雨の池', theme: 'rain', tip: '水に落ちないように ハスの葉を わたろう', build() {
+  { name: '雨の池', theme: 'rain', tip: '水に 落ちないように ハスの葉を わたろう', tip2: 'カエルは はねて 近づいてくるよ', build() {
     const L = makeLevel(190);
     L.ground(0, 20, 2);
     L.apples([[6, 8], [7, 8], [8, 8]]);
@@ -662,7 +662,7 @@ const STAGES = [
     L.e('goal', 182, 9);
     return L;
   } },
-  { name: 'お菓子の国', theme: 'sweets', tip: 'ジャムの上は 足がおそくなるよ', build() {
+  { name: 'お菓子の国', theme: 'sweets', tip: '赤い ジャムの上は 足がおそく ジャンプも ひくくなるよ', tip2: 'キノコで 高く とんで ケーキの山を こえよう', build() {
     const L = makeLevel(190);
     L.ground(0, 22, 2);
     L.apples([[5, 8], [6, 8], [7, 8]]);
@@ -691,7 +691,7 @@ const STAGES = [
     L.e('goal', 182, 9);
     return L;
   } },
-  { name: '火山', theme: 'volcano', tip: '溶岩が せり上がったら 高い足場へ にげよう', build() {
+  { name: '火山', theme: 'volcano', tip: '溶岩が せり上がったら 木箱の上へ にげよう', tip2: '溶岩から とびだす 火の玉は ふめないよ', build() {
     const L = makeLevel(200);
     L.ground(0, 25, 2);
     L.apples([[5, 8], [6, 8], [7, 8]]);
@@ -717,7 +717,7 @@ const STAGES = [
     L.e('goal', 192, 9);
     return L;
   } },
-  { name: '海と砂浜', theme: 'beach', tip: '波が来たら 岩の上へ にげよう', build() {
+  { name: '海と砂浜', theme: 'beach', tip: '波が 満ちてきたら 木箱の上へ にげよう', tip2: 'トゲの ヤドカリは ふめない。りんごを なげよう', build() {
     const L = makeLevel(190);
     L.ground(0, 24, 2);
     L.apples([[5, 8], [6, 8], [7, 8]]);
@@ -743,7 +743,7 @@ const STAGES = [
     L.e('goal', 182, 9);
     return L;
   } },
-  { name: 'おばけ屋敷', theme: 'ghost', tip: 'おばけは 見ていないと 近づいてくるよ', build() {
+  { name: 'おばけ屋敷', theme: 'ghost', tip: 'おばけは 見ていないと 近づいてくる。ふりむいて 止めよう', tip2: 'むらさきの床は 消えたり 出たりするよ', build() {
     const L = makeLevel(180);
     L.fill(0, 179, 0, 1, '#');
     L.ground(0, 30, 2);
@@ -763,7 +763,7 @@ const STAGES = [
     L.e('goal', 172, 9);
     return L;
   } },
-  { name: 'ふしぎな工場', theme: 'factory', tip: 'ベルトコンベアと プレス機に 気をつけて', build() {
+  { name: 'ふしぎな工場', theme: 'factory', tip: 'ベルトコンベアに 流されないように すすもう', tip2: 'プレス機は 倒せない。上がった すきに 通りぬけよう', build() {
     const L = makeLevel(190);
     L.fill(0, 189, 0, 1, '#');
     L.ground(0, 60, 2);
@@ -786,7 +786,7 @@ const STAGES = [
     L.e('goal', 182, 9);
     return L;
   } },
-  { name: '宇宙', theme: 'space', lowG: true, meteors: true, tip: 'ふわっと 高くとべるよ。いんせきに 気をつけて', build() {
+  { name: '宇宙', theme: 'space', lowG: true, meteors: true, tip: 'ふわっと 高く とべるよ', tip2: '空から 降ってくる いんせきに 気をつけて', build() {
     const L = makeLevel(200);
     L.ground(0, 20, 2);
     L.apples([[5, 8], [6, 8], [7, 8]]);
@@ -811,7 +811,7 @@ const STAGES = [
     L.e('goal', 192, 9);
     return L;
   } },
-  { name: '雲の上', theme: 'sky', tip: '風に おしもどされないように すすもう', build() {
+  { name: '雲の上', theme: 'sky', tip: '風の中では おしもどされるよ', tip2: 'かみなり雲の 真下は 点線のあと 雷が落ちてくるよ', build() {
     const L = makeLevel(200);
     L.ground(0, 20, 2);
     L.apples([[5, 8], [6, 8], [7, 8]]);
@@ -838,7 +838,7 @@ const STAGES = [
     L.e('goal', 192, 9);
     return L;
   } },
-  { name: 'くろくもの城', theme: 'storm', song: 'king', boss: 'king', tip: 'くろくも大王が降りてきたら ふむか、りんごを当てよう', build() {
+  { name: 'くろくもの城', theme: 'storm', song: 'king', boss: 'king', tip: 'くろくも大王が 降りてきたら ふむか、りんごを 当てよう', tip2: '雷の 点線が 出たら よけよう。怒ると 床が すべるよ', build() {
     const L = makeLevel(22);
     L.ground(0, 21, 2);
     L.fill(0, 0, 0, 9, '#'); L.fill(21, 21, 0, 9, '#');
@@ -850,7 +850,7 @@ const STAGES = [
   } },
 ];
 
-const BONUS = { name: 'りんご天国', theme: 'sky', song: 'bonus', bonus: true, tip: '30びょうで りんごを たくさん あつめよう！', build() {
+const BONUS = { name: 'りんご天国', theme: 'sky', song: 'bonus', bonus: true, tip: '30びょうで りんごを たくさん あつめよう！', tip2: 'ぜんぶ 取ると パーフェクト +5000！', build() {
   const L = makeLevel(60);
   L.ground(0, 59, 2);
   for (let x = 3; x <= 55; x += 2) L.e('apple', x, 8);
@@ -3092,8 +3092,8 @@ function drawIntro(c) {
   text(c, S.name, VW / 2, 150, 36, '#fbf5e8', 'center');
   drawTowa(c, VW / 2 - 24, 250, { scale: 1.6, t: G.t });
   text(c, '× ' + G.lives, VW / 2 + 10, 228, 22, '#fbf5e8', 'left');
-  text(c, S.tip || '', VW / 2, 300, 14, '#e9f3dc', 'center');
-  if (G.stageIdx === 0) text(c, 'てきを倒すと ひっさつゲージがたまるよ（5しゅるいの技を きりかえられる）', VW / 2, 324, 12, '#f3d75a', 'center');
+  text(c, S.tip || '', VW / 2, 298, 14, '#e9f3dc', 'center');
+  if (S.tip2) text(c, S.tip2, VW / 2, 322, 13, '#f3d75a', 'center');
 }
 function drawEnding(c) {
   glowBackdrop(c);
