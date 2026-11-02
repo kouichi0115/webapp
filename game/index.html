@@ -850,7 +850,7 @@ const STAGES = [
   } },
 ];
 
-const BONUS = { name: 'りんご天国', theme: 'sky', song: 'bonus', bonus: true, tip: '20びょうで りんごを たくさん あつめよう！', build() {
+const BONUS = { name: 'りんご天国', theme: 'sky', song: 'bonus', bonus: true, tip: '30びょうで りんごを たくさん あつめよう！', build() {
   const L = makeLevel(60);
   L.ground(0, 59, 2);
   for (let x = 3; x <= 55; x += 2) L.e('apple', x, 8);
@@ -904,7 +904,7 @@ function loadStage(i) {
   L = S.build();
   enemies = []; items = []; shots = []; hazards = []; parts = []; boss = null;
   crumbles.clear(); bumps.length = 0; respawns = [];
-  L.appleTotal = L.ents.filter(e => e.type === 'apple').length; G.appleGot = 0; G.bonusT = 1200;
+  L.appleTotal = L.ents.filter(e => e.type === 'apple').length; G.appleGot = 0; G.bonusT = 1800;
   movers = L.movers.map(m => ({ bx: m.x * T, by: m.y * T, x: m.x * T, y: m.y * T, w: m.len * T, h: 14, dx: m.dx, dy: m.dy, period: m.period, t: 0, vx: 0, vy: 0 }));
   for (const e of L.ents) {
     if (e.type === 'apple') items.push({ type: 'apple', orig: true, x: e.x * T + 7, y: e.y * T + 7, w: 16, h: 16, t: hash(e.x + e.y) * 100 });
