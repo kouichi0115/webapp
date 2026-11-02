@@ -408,12 +408,13 @@ const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h 
 const hash = i => { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
 
 // ===== ステージ =====
-function makeLevel(w) {
+function makeLevel(w, rows) {
+  rows = rows || ROWS;
   const g = [];
-  for (let r = 0; r < ROWS; r++) g.push(new Array(w).fill('.'));
-  const L = { w, g, ents: [], movers: [], start: { x: 2, y: 9 } };
-  L.fill = (x0, x1, y0, y1, c) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (x >= 0 && x < w && y >= 0 && y < ROWS) g[y][x] = c; };
-  L.ground = (x0, x1, h) => L.fill(x0, x1, ROWS - h, ROWS - 1, '#');
+  for (let r = 0; r < rows; r++) g.push(new Array(w).fill('.'));
+  const L = { w, rows, g, ents: [], movers: [], start: { x: 2, y: 9 } };
+  L.fill = (x0, x1, y0, y1, c) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (x >= 0 && x < w && y >= 0 && y < rows) g[y][x] = c; };
+  L.ground = (x0, x1, h) => L.fill(x0, x1, rows - h, rows - 1, '#');
   L.row = (x0, x1, y, c) => L.fill(x0, x1, y, y, c);
   L.put = (x, y, c) => { g[y][x] = c; };
   L.e = (type, x, y, o) => L.ents.push(Object.assign({ type, x, y }, o || {}));
@@ -850,7 +851,8 @@ const STAGES = [
   } },
 ];
 
-const BONUS = { name: 'りんご天国', theme: 'sky', song: 'bonus', bonus: true, tip: '30びょうで りんごを たくさん あつめよう！', tip2: 'ぜんぶ 取ると パーフェクト +5000！', build() {
+const BONUSES = [
+{ name: 'りんご天国', kind: 'heaven', theme: 'sky', song: 'bonus', bonus: true, tip: '30びょうで りんごを たくさん あつめよう！', tip2: 'ぜんぶ 取ると パーフェクト +5000！', build() {
   const L = makeLevel(60);
   L.ground(0, 59, 2);
   for (let x = 3; x <= 55; x += 2) L.e('apple', x, 8);
@@ -862,18 +864,60 @@ const BONUS = { name: 'りんご天国', theme: 'sky', song: 'bonus', bonus: tru
   for (let x = 38; x <= 42; x += 2) L.e('apple', x, 6);
   L.e('goal', 57, 9);
   return L;
-} };
+} },
+{ name: 'ジュースの滝', kind: 'fall', theme: 'orchard', song: 'bonus', bonus: true, tip: '降ってくる りんごを 受け取ろう！ 金のりんごは +500', tip2: 'むらさきの どくりんごは とらないで！（とらなければ パーフェクト）', build() {
+  const L = makeLevel(22);
+  L.ground(0, 21, 2); L.fill(0, 0, 0, 9, '#'); L.fill(21, 21, 0, 9, '#');
+  L.start = { x: 10, y: 9 };
+  return L;
+} },
+{ name: 'のぼれ！雲のタワー', kind: 'tower', theme: 'sky', song: 'bonus', bonus: true, tip: '雲の足場を のぼって てっぺんを めざそう！', tip2: '上に行くほど りんごが たくさん。てっぺんで パーフェクト！', build() {
+  const R = 48, L = makeLevel(22, R);
+  L.ground(0, 21, 2); L.fill(0, 0, 0, R - 1, '#'); L.fill(21, 21, 0, R - 1, '#');
+  const xs = [3, 7, 11, 15, 11, 7];
+  let k = 0;
+  for (let r = R - 4; r >= 6; r -= 2, k++) {
+    const x0 = xs[k % xs.length];
+    L.row(x0, x0 + 4, r, 'K');
+    const n = r < 18 ? 3 : r < 30 ? 2 : 1;
+    for (let i = 0; i < n; i++) L.e('apple', x0 + 1 + i, r - 1);
+  }
+  L.row(3, 18, 4, 'K'); L.e('goal', 10, 3);
+  L.put(16, R - 3, 'S');
+  L.start = { x: 4, y: R - 3 };
+  return L;
+} },
+{ name: 'ふみふみラッシュ', kind: 'balloon', theme: 'sweets', song: 'bonus', bonus: true, tip: 'とんでくる ふうせんを どんどん ふもう！', tip2: '着地せずに ふむと 点数が 2倍ずつ。20こで パーフェクト！', build() {
+  const L = makeLevel(22);
+  L.ground(0, 21, 2); L.fill(0, 0, 0, 9, '#'); L.fill(21, 21, 0, 9, '#');
+  L.row(3, 6, 8, 'K'); L.row(15, 18, 8, 'K'); L.put(10, 9, 'S');
+  L.start = { x: 5, y: 9 };
+  return L;
+} },
+{ name: 'たからさがし', kind: 'treasure', theme: 'cave', song: 'bonus', bonus: true, tip: 'キラキラの ブロックを 下から たたいて たからを さがそう', tip2: 'ハズレも あるよ。たからを ぜんぶ見つけて パーフェクト！', build() {
+  const L = makeLevel(60);
+  L.fill(0, 59, 0, 1, '#'); L.ground(0, 59, 2); L.fill(59, 59, 0, 9, '#');
+  const tr = [[6, 6, 'apples'], [11, 6, 'none'], [16, 6, 'juice'], [22, 4, 'gold'], [28, 6, 'none'], [33, 6, 'apples'], [39, 4, '1up'], [45, 6, 'gold'], [49, 6, 'none'], [53, 6, 'apples']];
+  L.treasure = {};
+  for (const [x, y, k] of tr) { L.put(x, y, 'X'); L.treasure[x + ',' + y] = k; }
+  L.row(20, 24, 8, '='); L.row(37, 41, 8, '=');
+  L.treasureTotal = tr.filter(t => t[2] !== 'none').length;
+  L.e('goal', 56, 9);
+  L.start = { x: 2, y: 9 };
+  return L;
+} },
+];
 
 // ===== ゲーム状態 =====
 const G = {
   state: 'title', stageIdx: 0, score: 0, lives: 3, hi: loadHi(), t: 0, timer: 0,
-  shake: 0, cam: 0, checkpoint: null, ammo: 3, msg: null, combo: 0, appleTimer: 0, gauge: 0, rain: null,
+  shake: 0, cam: 0, checkpoint: null, ammo: 3, msg: null, combo: 0, appleTimer: 0, gauge: 0, rain: null, camY: 0, bonusIdx: 0,
   cheat: { inv: false, inf: false, lives: false, air: false, stage: 0 }, menuSel: 0, menuTap: null,
   spIdx: 0, sp: null, barrier: null, spBanner: null,
 };
 let L = null, P = null, enemies = [], items = [], shots = [], hazards = [], parts = [], movers = [], boss = null;
 
-const isSolid = c => c === '#' || c === 'B' || c === 'Q' || c === 'U' || c === 'S' || c === 'C' || c === 'I' || c === 'J' || c === 'V' || c === '>' || c === '<';
+const isSolid = c => c === 'X' || c === '#' || c === 'B' || c === 'Q' || c === 'U' || c === 'S' || c === 'C' || c === 'I' || c === 'J' || c === 'V' || c === '>' || c === '<';
 const vfOn = tx => ((L.time || 0) + tx * 12) % 200 < 130;
 const isOneWay = c => c === '=' || c === 'L' || c === 'K';
 function tideY() {
@@ -889,22 +933,22 @@ function inLiquid(b) {
 }
 const crumbles = new Map();
 const HOLES = [80, 250, 410, 580];
-const curStage = () => (G.inBonus ? BONUS : STAGES[G.stageIdx]);
+const curStage = () => (G.inBonus ? BONUSES[G.bonusIdx] : STAGES[G.stageIdx]);
 const stageSong = () => curStage().song || curStage().theme;
 function tileAt(tx, ty) {
   if (tx < 0 || tx >= L.w) return '#';
-  if (ty < 0 || ty >= ROWS) return '.';
+  if (ty < 0 || ty >= L.rows) return '.';
   const c = L.g[ty][tx];
   if (c === 'V' && !vfOn(tx)) return 'v';
   return c;
 }
 
 function loadStage(i) {
-  const S = G.inBonus ? BONUS : STAGES[i];
+  const S = G.inBonus ? BONUSES[G.bonusIdx] : STAGES[i];
   L = S.build();
   enemies = []; items = []; shots = []; hazards = []; parts = []; boss = null;
   crumbles.clear(); bumps.length = 0; respawns = [];
-  L.appleTotal = L.ents.filter(e => e.type === 'apple').length; G.appleGot = 0; G.bonusT = 1800;
+  L.appleTotal = L.ents.filter(e => e.type === 'apple').length; G.appleGot = 0; G.bonusT = 1800; G.bonusGot = 0; G.poisonHit = false; G.towerTop = false; G.towerBest = 0; G.spawnT = 0;
   movers = L.movers.map(m => ({ bx: m.x * T, by: m.y * T, x: m.x * T, y: m.y * T, w: m.len * T, h: 14, dx: m.dx, dy: m.dy, period: m.period, t: 0, vx: 0, vy: 0 }));
   for (const e of L.ents) {
     if (e.type === 'apple') items.push({ type: 'apple', orig: true, x: e.x * T + 7, y: e.y * T + 7, w: 16, h: 16, t: hash(e.x + e.y) * 100 });
@@ -931,11 +975,12 @@ function loadStage(i) {
   G.rainbow = false;
   G.appleTimer = 0;
   G.cam = clamp(P.x - VW * 0.42, 0, Math.max(0, L.w * T - VW));
+  G.camY = clamp(P.y - VH * 0.55, 0, Math.max(0, L.rows * T - VH));
   G.msg = null; G.combo = 0;
 }
 
 function makeEnemy(e) {
-  const sizes = { walker: [24, 16], mush: [22, 22], bee: [22, 18], spiky: [22, 20], bird: [22, 16], snowball: [22, 22], rock: [14, 24], frog: [22, 18], strider: [26, 10], gummy: [20, 20], candy: [22, 22], fire: [16, 16], thunder: [40, 22], crab: [24, 16], hermit: [22, 20], ghost: [24, 24], robot: [20, 24], press: [30, 22], ufo: [30, 14] };
+  const sizes = { walker: [24, 16], mush: [22, 22], bee: [22, 18], spiky: [22, 20], bird: [22, 16], snowball: [22, 22], rock: [14, 24], frog: [22, 18], strider: [26, 10], gummy: [20, 20], candy: [22, 22], fire: [16, 16], thunder: [40, 22], crab: [24, 16], hermit: [22, 20], ghost: [24, 24], robot: [20, 24], press: [30, 22], ufo: [30, 14], balloon: [22, 26] };
   const [w, h] = sizes[e.type];
   const o = { type: e.type, w, h, x: e.x * T + (T - w) / 2, y: (e.y + 1) * T - h, vx: 0, vy: 0, alive: true, dead: 0, t: Math.floor(hash(e.x) * 120), awake: false, face: -1, onGround: false };
   if (e.type === 'walker') o.vx = -0.8;
@@ -946,6 +991,7 @@ function makeEnemy(e) {
   if (e.type === 'hermit') o.vx = -0.5;
   if (e.type === 'robot') o.vx = -1.0;
   if (e.type === 'ghost') { o.y = e.y * T; }
+  if (e.type === 'balloon') { o.by = e.y * T; o.y = o.by; }
   if (e.type === 'press') { o.x = e.x * T; o.top = e.y * T; o.bot = 10 * T - h; o.y = o.top + 6; o.st = 'up'; o.t = Math.floor(hash(e.x) * 90); o.immune = true; }
   if (e.type === 'bee' || e.type === 'bird' || e.type === 'ufo') { o.bx = o.x; o.by = e.y * T + 6; o.y = o.by; o.range = e.range || 2; }
   if (e.type === 'rock') { o.y = e.y * T; o.st = 'hang'; }
@@ -1028,11 +1074,44 @@ function killPlayer() {
   G.state = 'dying'; G.timer = 110; P.vy = -8; P.vx = 0; P.hp = 0;
   stopBgm(); SFX.die();
 }
+function bonusTick() {
+  const S = curStage(); G.spawnT++;
+  if (S.kind === 'fall' && G.spawnT % 16 === 0) {
+    const r = Math.random(), kind = r < 0.1 ? 'gold' : r < 0.3 ? 'poison' : 'normal';
+    items.push({ type: 'apple', falling: true, kind, x: T + 10 + Math.random() * (L.w - 3) * T, y: G.camY - 20, w: 16, h: 16, vy: 2 + Math.random() * 1.8, t: 0 });
+  }
+  if (S.kind === 'balloon' && G.spawnT % 38 === 0) {
+    const right = Math.random() < 0.5, y = 3 + Math.floor(Math.random() * 5);
+    const e = makeEnemy({ type: 'balloon', x: right ? L.w - 2 : 1, y });
+    e.vx = (right ? -1 : 1) * (1 + Math.random() * 0.8); e.awake = true; e.noRespawn = true; e.harmless = true;
+    e.col = ['#e2434b', '#5aa9e6', '#f3c93a', '#7cc35a', '#f2a7c3'][Math.floor(Math.random() * 5)];
+    enemies.push(e);
+  }
+  if (S.kind === 'tower') G.towerBest = Math.max(G.towerBest, Math.floor((L.rows * T - (P.y + P.h)) / T) - 2);
+}
+function openTreasure(x, y) {
+  L.g[y][x] = 'U';
+  const k = L.treasure ? L.treasure[x + ',' + y] : 'none', fx = x * T + 15, fy = y * T - 16;
+  if (k === 'apples') { P.ammo = Math.min(99, P.ammo + 10); addScore(500); floatText(fx, fy, 'りんご +10', '#f3d75a'); SFX.apple(); }
+  else if (k === 'juice') { if (P.hp < 3) P.hp++; else addScore(500); floatText(fx, fy, 'ジュース！ HP +1', '#a6d79a'); SFX.juice(); }
+  else if (k === '1up') { G.lives++; floatText(fx, fy, '1UP！', '#a6d79a'); SFX.oneup(); }
+  else if (k === 'gold') { addScore(2000); floatText(fx, fy, '金のりんご +2000', '#f3d75a'); SFX.juice(); }
+  else { floatText(fx, fy, 'ハズレ…', '#cfc6e0'); SFX.empty(); return; }
+  G.bonusGot++;
+  burst(fx, y * T, '#f3d75a', 14, 2.5);
+  if (k === 'gold') parts.push({ x: fx, y: y * T - 6, vx: 0, vy: -2.2, life: 34, max: 34, apple: true, g: 0.1 });
+}
 function bonusFinish() {
   G.state = 'clear'; G.timer = 170; stopBgm(); SFX.clear();
-  const perfect = G.appleGot >= L.appleTotal;
+  const S = curStage();
+  let perfect = false, line = '';
+  if (S.kind === 'fall') { perfect = !G.poisonHit && G.bonusGot > 0; line = '受け取った りんご ' + G.bonusGot + ' こ' + (G.poisonHit ? '' : '（どくりんご なし！）'); }
+  else if (S.kind === 'tower') { perfect = G.towerTop; line = 'のぼった 高さ ' + (G.towerTop ? L.rows - 6 : G.towerBest) + ' m'; }
+  else if (S.kind === 'balloon') { perfect = G.bonusGot >= 20; line = 'わった ふうせん ' + G.bonusGot + ' こ'; }
+  else if (S.kind === 'treasure') { perfect = G.bonusGot >= L.treasureTotal; line = '見つけた たから ' + G.bonusGot + ' / ' + L.treasureTotal; }
+  else { perfect = G.appleGot >= L.appleTotal; line = 'あつめた りんご ' + G.appleGot + ' / ' + L.appleTotal; }
   if (perfect) G.score += 5000;
-  G.msg = { text: perfect ? 'パーフェクト！ +5000' : 'ボーナス おわり！', sub: 'あつめた りんご ' + G.appleGot + ' / ' + L.appleTotal };
+  G.msg = { text: perfect ? 'パーフェクト！ +5000' : 'ボーナス おわり！', sub: line };
   G.ammo = P.ammo;
 }
 function stageClear() {
@@ -1091,12 +1170,17 @@ function update() {
       const r = moveBody(P, 0, P.vy);
       if (r.landed) { P.vy = 0; if (G.timer % 30 < 15) P.vy = -5; }
       for (const m of movers) updateMover(m);
+      G.camY += (clamp(P.y - VH * 0.55, 0, Math.max(0, L.rows * T - VH)) - G.camY) * 0.12;
       updateParts();
       if (G.t % 6 === 0) burst(P.x + P.w / 2 + (Math.random() - 0.5) * 60, P.y - 10, ['#f3d75a', '#e2434b', '#a6d79a'][G.t % 3], 3, 2);
       if (G.timer <= 0) {
         if (G.inBonus) { G.inBonus = false; G.checkpoint = null; toIntro(); break; }
         G.stageIdx++; G.checkpoint = null;
-        if (G.bonusNext && G.stageIdx < STAGES.length) { G.bonusNext = false; G.inBonus = true; toIntro(); break; }
+        if (G.bonusNext && G.stageIdx < STAGES.length) {
+          G.bonusNext = false; G.inBonus = true;
+          let b; do { b = Math.floor(Math.random() * BONUSES.length); } while (b === G.lastBonus && BONUSES.length > 1);
+          G.bonusIdx = b; G.lastBonus = b; toIntro(); break;
+        }
         G.bonusNext = false;
         if (G.stageIdx >= STAGES.length) { G.state = 'ending'; G.timer = 0; saveHi(); stopBgm(); startBgm('day'); }
         else toIntro();
@@ -1220,11 +1304,11 @@ function startRain() {
 function updateRain() {
   const R = G.rain; R.t++;
   if (R.t < 70 && Math.random() < 0.65) {
-    rainDrops.push({ x: G.cam + Math.random() * VW, y: -20 - Math.random() * 40, vy: 5 + Math.random() * 4, r: 5 + Math.random() * 5, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3 });
+    rainDrops.push({ x: G.cam + Math.random() * VW, y: G.camY - 20 - Math.random() * 40, vy: 5 + Math.random() * 4, r: 5 + Math.random() * 5, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3 });
   }
   for (const d of rainDrops) { d.y += d.vy; d.rot += d.vr; }
   rainDrops = rainDrops.filter(d => {
-    if (d.y < VH + 20) return true;
+    if (d.y < G.camY + VH + 20) return true;
     return false;
   });
   if (R.t % 5 === 0 && R.t < 80) tone(700 + Math.random() * 500, 0.06, 'triangle', 0.04);
@@ -1391,7 +1475,7 @@ function updatePlay() {
     else { SFX.empty(); floatText(P.x + P.w / 2, P.y - 16, 'ゲージがたりない！', '#f0868b'); }
   }
   if (curStage().meteors && L.time % 75 === 0) hazards.push({ stone: true, meteor: true, x: G.cam + 120 + Math.random() * VW, y: -20, vx: -1.6, vy: 3.2, t: 0 });
-  if (G.inBonus) { G.bonusT--; if (G.bonusT <= 0) { bonusFinish(); return; } }
+  if (G.inBonus) { G.bonusT--; bonusTick(); if (G.bonusT <= 0) { bonusFinish(); return; } }
   if (G.rain) updateRain();
   if (G.sp) updateSp();
   if (G.barrier) updateBarrier();
@@ -1407,6 +1491,8 @@ function updatePlay() {
   const target = P.x + P.w / 2 - VW * 0.42;
   G.cam += (target - G.cam) * 0.12;
   G.cam = clamp(G.cam, 0, Math.max(0, L.w * T - VW));
+  const ty = clamp(P.y - VH * 0.55, 0, Math.max(0, L.rows * T - VH));
+  G.camY += (ty - G.camY) * 0.12;
 }
 
 function updatePlayer() {
@@ -1453,7 +1539,8 @@ function updatePlayer() {
   if (r.head) {
     P.vy = 1;
     const c = tileAt(r.head.x, r.head.y);
-    if (c === 'Q') {
+    if (c === 'X') openTreasure(r.head.x, r.head.y);
+    else if (c === 'Q') {
       L.g[r.head.y][r.head.x] = 'U';
       P.ammo = Math.min(99, P.ammo + 1); addScore(10);
       SFX.apple();
@@ -1510,7 +1597,7 @@ function updatePlayer() {
   }
   const drown = inLiquid(P);
   if (drown) { SFX.splash(); burst(P.x + P.w / 2, P.y + P.h, curStage().theme === 'volcano' ? '#ffb347' : '#9fd0f0', 10, 2.5); }
-  if (P.y > ROWS * T + 30 || drown) {
+  if (P.y > L.rows * T + 30 || drown) {
     if (G.cheat.inv) { P.x = P.safeX; P.y = P.safeY; P.vx = 0; P.vy = 0; P.inv = 60; P.onMover = null; }
     else killPlayer();
   }
@@ -1538,6 +1625,9 @@ function updateEnemies() {
       else if (e.st === 'slam') { e.y = Math.min(e.bot, e.y + 9); if (e.y >= e.bot) { e.st = 'down'; e.t = 0; G.shake = Math.max(G.shake, Math.abs(e.x - P.x) < 300 ? 3 : 0); if (Math.abs(e.x - P.x) < 400) tone(90, 0.12, 'square', 0.05); } }
       else if (e.st === 'down') { if (e.t >= 30) { e.st = 'rise'; e.t = 0; } }
       else { e.y = Math.max(e.top + 6, e.y - 2.5); if (e.y <= e.top + 6) { e.st = 'up'; e.t = 0; } }
+    } else if (e.type === 'balloon') {
+      e.x += e.vx; e.y = e.by + Math.sin(e.t * 0.05) * 12; e.face = e.vx < 0 ? -1 : 1;
+      if (e.x < T - 24 || e.x > (L.w - 1) * T + 4) { e.alive = false; e.dead = 0; }
     } else if (e.type === 'bee' || e.type === 'ufo') {
       const px = e.x;
       e.x = e.bx + Math.sin(e.t * 0.015) * e.range * T;
@@ -1575,7 +1665,7 @@ function updateEnemies() {
         if (e.t > 18) e.st = 'fall';
       } else {
         e.vy = Math.min(e.vy + 0.45, 10); e.y += e.vy;
-        if (isSolid(tileAt(Math.floor((e.x + e.w / 2) / T), Math.floor((e.y + e.h) / T))) || e.y > ROWS * T) {
+        if (isSolid(tileAt(Math.floor((e.x + e.w / 2) / T), Math.floor((e.y + e.h) / T))) || e.y > L.rows * T) {
           e.alive = false; e.dead = 0; SFX.block(); burst(e.x + e.w / 2, e.y + e.h, '#8d8496', 8, 2);
         }
       }
@@ -1596,7 +1686,7 @@ function updateEnemies() {
         if (!isSolid(below) && !isOneWay(below)) e.vx *= -1;
       }
       if (e.type !== 'frog') e.face = e.vx < 0 ? -1 : 1;
-      if (e.y > ROWS * T + 40) { e.alive = false; e.dead = 0; }
+      if (e.y > L.rows * T + 40) { e.alive = false; e.dead = 0; }
     }
     // プレイヤーとの接触
     if (G.state === 'play' && !e.hidden && overlap(P, e)) {
@@ -1609,10 +1699,12 @@ function updateEnemies() {
         if (G.combo >= 2) {
           floatText(e.x + e.w / 2, e.y - 22, '×' + G.combo + ' COMBO', '#f3d75a');
           tone(500 + Math.min(10, G.combo) * 90, 0.12, 'square', 0.05, null, now() + 0.06);
-        } burst(e.x + e.w / 2, e.y + e.h / 2, '#fbf5e8', 6, 2);
+        }
+        burst(e.x + e.w / 2, e.y + e.h / 2, e.col || '#fbf5e8', 6, 2);
         addGauge(15);
+        if (e.type === 'balloon') G.bonusGot++;
       } else {
-        hurtPlayer();
+        if (!e.harmless) hurtPlayer();
       }
     }
   }
@@ -1635,6 +1727,7 @@ let respawns = [];
 function killEnemyByShot(e, s) {
   if (e.immune) return;
   e.alive = false; e.dead = 60; e.flip = true; e.vy = -5; e.vx = s.vx > 0 ? 1.5 : -1.5;
+  if (e.type === 'balloon') G.bonusGot++;
   addScore(e.type === 'spiky' ? 200 : 100, e.x + e.w / 2, e.y - 6);
   SFX.kill(); burst(e.x + e.w / 2, e.y + e.h / 2, '#e2434b', 6, 2);
   addGauge(15);
@@ -1658,7 +1751,7 @@ function updateShots() {
       if (boss.inv <= 0) { damageBoss(); s.life = 0; }
       else { s.vx = -s.vx * 0.5; s.vy = -3; }
     }
-    if (s.y > ROWS * T + 30 || s.x < G.cam - 60 || s.x > G.cam + VW + 60) s.life = 0;
+    if (s.y > L.rows * T + 30 || s.x < G.cam - 60 || s.x > G.cam + VW + 60) s.life = 0;
   }
   shots = shots.filter(s => s.life > 0);
 }
@@ -1669,7 +1762,7 @@ function updateHazards() {
       h.t++;
       if (h.gy == null) {
         let ty = Math.floor(h.y / T);
-        while (ty < ROWS && !isSolid(tileAt(Math.floor(h.x / T), ty))) ty++;
+        while (ty < L.rows && !isSolid(tileAt(Math.floor(h.x / T), ty))) ty++;
         h.gy = ty * T;
       }
       if (h.t === 35) { SFX.thunder(); G.shake = Math.max(G.shake, 6); burst(h.x, h.gy, '#fff3a0', 8, 2.5); }
@@ -1691,7 +1784,24 @@ function updateItems() {
   for (const it of items) {
     it.t++;
     if (it.got) continue;
+    if (it.falling) {
+      it.y += it.vy;
+      if (it.y + it.h > (L.rows - 2) * T) { it.got = true; burst(it.x + 8, (L.rows - 2) * T, it.kind === 'poison' ? '#a070c8' : '#f3d75a', 4, 1.2); continue; }
+    }
     if (!overlap(P, it)) continue;
+    if (it.type === 'apple' && it.falling) {
+      it.got = true;
+      if (it.kind === 'poison') {
+        G.poisonHit = true; G.score = Math.max(0, G.score - 300); floatText(it.x + 8, it.y - 6, '-300', '#c89ae8');
+        P.vx = 0; P.inv = 40; G.shake = 6; tone(200, 0.25, 'sawtooth', 0.06, 90); burst(it.x + 8, it.y + 8, '#a070c8', 8, 2);
+      } else {
+        G.bonusGot++; P.ammo = Math.min(99, P.ammo + 1);
+        addScore(it.kind === 'gold' ? 500 : 100, it.x + 8, it.y);
+        if (it.kind === 'gold') SFX.juice(); else SFX.apple();
+        burst(it.x + 8, it.y + 8, '#f3d75a', it.kind === 'gold' ? 12 : 6, 1.5);
+      }
+      continue;
+    }
     if (it.type === 'apple') {
       it.got = true; P.ammo = Math.min(99, P.ammo + 1); addScore(G.inBonus ? 100 : 10, G.inBonus ? it.x + 8 : null, it.y); addGauge(2);
       if (it.orig) { G.appleGot++; if (G.appleGot === L.appleTotal && !curStage().boss) { floatText(P.x + P.w / 2, P.y - 26, 'りんご コンプリート！', '#f3d75a'); SFX.oneup(); } }
@@ -1705,7 +1815,7 @@ function updateItems() {
       it.on = true; G.checkpoint = { stage: G.stageIdx, x: it.tx, y: it.ty };
       SFX.check(); burst(it.x + 9, it.y + 6, '#f4a7b9', 10, 2); floatText(it.x + 9, it.y - 10, 'チェックポイント', '#a6d79a');
     } else if (it.type === 'goal') {
-      if (G.inBonus) bonusFinish(); else stageClear();
+      if (G.inBonus) { if (curStage().kind === 'tower') G.towerTop = true; bonusFinish(); } else stageClear();
       return;
     }
   }
@@ -1965,9 +2075,9 @@ function updateBoss() {
 
 // ===== 描画：TOWA様 =====
 const OL = '#3b2e27', BODY = '#fbf5e8', LEAF = '#a6d79a', LEAF2 = '#8fc48a', VEIN = '#5d8f4f';
-function drawApple(c, x, y, r, rot) {
+function drawApple(c, x, y, r, rot, col) {
   c.save(); c.translate(x, y); if (rot) c.rotate(rot);
-  c.fillStyle = '#e2434b'; c.strokeStyle = OL; c.lineWidth = 1.2;
+  c.fillStyle = col || '#e2434b'; c.strokeStyle = OL; c.lineWidth = 1.2;
   c.beginPath();
   c.moveTo(0, -r * 0.65);
   c.bezierCurveTo(r * 0.6, -r * 1.15, r * 1.25, -r * 0.5, r * 0.95, r * 0.35);
@@ -2216,6 +2326,15 @@ function drawEnemy(c, e) {
     c.fillStyle = '#c9a43a'; c.fillRect(e.x, e.y, 30, 22); c.strokeRect(e.x + 0.5, e.y + 0.5, 29, 21);
     c.fillStyle = '#2e3138';
     for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(e.x + 2 + k * 7, e.y + 22); c.lineTo(e.x + 6 + k * 7, e.y + 16); c.lineTo(e.x + 9 + k * 7, e.y + 22); c.fill(); }
+  } else if (e.type === 'balloon') { // ふうせん
+    if (e.flat) { c.restore(); return; }
+    c.strokeStyle = OL; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(0, -6); c.quadraticCurveTo(3, -2, 0, 2); c.stroke();
+    c.fillStyle = e.col || '#e2434b'; c.lineWidth = 1.3;
+    c.beginPath(); c.ellipse(0, -16, 10, 12, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(-2, -4); c.lineTo(2, -4); c.lineTo(0, -6.5); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.5)'; c.beginPath(); c.ellipse(-4, -20, 2.5, 4, -0.4, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#1d1a18'; c.beginPath(); c.arc(-3, -16, 1.3, 0, Math.PI * 2); c.arc(3, -16, 1.3, 0, Math.PI * 2); c.fill();
   } else if (e.type === 'ufo') { // UFO
     c.fillStyle = 'rgba(160,220,255,0.75)'; c.beginPath(); c.arc(0, -9, 7, Math.PI, 0); c.fill(); c.stroke();
     c.fillStyle = '#9aa3b0'; c.beginPath(); c.ellipse(0, -7, 15, 5, 0, 0, Math.PI * 2); c.fill(); c.stroke();
@@ -2730,7 +2849,8 @@ function drawBackground(c, theme, cam) {
 function drawTiles(c, theme, cam) {
   const th = THEMES[theme];
   const x0 = Math.floor(cam / T) - 1, x1 = x0 + Math.ceil(VW / T) + 2;
-  for (let ty = 0; ty < ROWS; ty++) for (let tx = x0; tx <= x1; tx++) {
+  const ty0 = Math.max(0, Math.floor(G.camY / T) - 1), ty1 = Math.min(L.rows - 1, ty0 + Math.ceil(VH / T) + 2);
+  for (let ty = ty0; ty <= ty1; ty++) for (let tx = x0; tx <= x1; tx++) {
     if (tx < 0 || tx >= L.w) continue;
     const ch = L.g[ty][tx];
     if (ch === '.' || ch === 'c') continue;
@@ -2844,6 +2964,13 @@ function drawTiles(c, theme, cam) {
       c.fillStyle = '#c98f55'; c.fillRect(px + 1, py + 1, T - 2, T - 2);
       c.strokeStyle = '#7a5236'; c.lineWidth = 2; c.strokeRect(px + 2, py + 2, T - 4, T - 4);
       c.beginPath(); c.moveTo(px + 3, py + 3); c.lineTo(px + T - 3, py + T - 3); c.stroke();
+    } else if (ch === 'X') {
+      c.fillStyle = '#e8c25a'; c.fillRect(px + 1, py + 1, T - 2, T - 2);
+      c.strokeStyle = OL; c.lineWidth = 1.5; c.strokeRect(px + 1.5, py + 1.5, T - 3, T - 3);
+      c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(px + 3, py + 3, T - 6, 3);
+      const tw = 0.5 + 0.5 * Math.sin(G.t * 0.15 + tx);
+      drawStar(c, px + 15, py + 16, 5 + tw * 2, '#fffbe0');
+      if (tw > 0.8) drawStar(c, px + 25, py + 5, 3, '#ffffff');
     } else if (ch === 'Q' || ch === 'U') {
       c.fillStyle = ch === 'Q' ? '#8fc48a' : '#9a8670'; c.fillRect(px + 1, py + 1, T - 2, T - 2);
       c.strokeStyle = OL; c.lineWidth = 1.5; c.strokeRect(px + 1.5, py + 1.5, T - 3, T - 3);
@@ -2875,7 +3002,8 @@ function drawMover(c, m) {
 }
 function drawItem(c, it) {
   if (it.type === 'apple') {
-    drawApple(c, it.x + 8, it.y + 9 + Math.sin(it.t * 0.08) * 2, 7, Math.sin(it.t * 0.05) * 0.15);
+    if (it.kind === 'gold') { c.fillStyle = 'rgba(255,230,120,0.35)'; c.beginPath(); c.arc(it.x + 8, it.y + 9, 13, 0, Math.PI * 2); c.fill(); }
+    drawApple(c, it.x + 8, it.y + 9 + (it.falling ? 0 : Math.sin(it.t * 0.08) * 2), 7, Math.sin(it.t * 0.05) * 0.15, it.kind === 'gold' ? '#f3c93a' : it.kind === 'poison' ? '#8a4fb0' : null);
   } else if (it.type === 'juice') {
     const glow = c.createRadialGradient(it.x + 9, it.y + 14, 2, it.x + 9, it.y + 14, 26);
     glow.addColorStop(0, 'rgba(255,240,150,0.55)'); glow.addColorStop(1, 'rgba(255,240,150,0)');
@@ -2981,8 +3109,20 @@ function drawParts(c) {
 function drawWorld(c) {
   const S = curStage();
   const sx = G.shake > 0 ? (Math.random() - 0.5) * G.shake * 0.6 : 0, sy = G.shake > 0 ? (Math.random() - 0.5) * G.shake * 0.6 : 0;
-  drawBackground(c, S.theme, G.cam);
-  c.save(); c.translate(-Math.round(G.cam) + sx, sy);
+  if (L.rows > ROWS) {
+    c.fillStyle = THEMES[S.theme].sky[0]; c.fillRect(0, 0, VW, VH);
+    c.save(); c.translate(0, (L.rows * T - VH - G.camY) * 0.25);
+    drawBackground(c, S.theme, G.cam);
+    c.restore();
+  } else drawBackground(c, S.theme, G.cam);
+  if (S.kind === 'fall') {
+    const g = c.createLinearGradient(0, 0, 0, VH);
+    g.addColorStop(0, 'rgba(246,226,122,0.55)'); g.addColorStop(1, 'rgba(246,226,122,0.15)');
+    c.fillStyle = g; c.fillRect(150, 0, 340, 300);
+    c.strokeStyle = 'rgba(255,250,220,0.6)'; c.lineWidth = 2;
+    for (let i = 0; i < 12; i++) { const x = 160 + i * 28, y = (G.t * 4 + i * 37) % 320; c.beginPath(); c.moveTo(x, y - 30); c.lineTo(x, y); c.stroke(); }
+  }
+  c.save(); c.translate(-Math.round(G.cam) + sx, -Math.round(G.camY) + sy);
   drawTiles(c, S.theme, G.cam);
   if (L.tide) {
     const ty = tideY(), x0 = L.tide.x0 * T, x1 = (L.tide.x1 + 1) * T;
@@ -3019,9 +3159,9 @@ function drawWorld(c) {
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(5,10,20,0.45)');
     c.fillStyle = v; c.fillRect(0, 0, VW, VH);
   } else if (S.theme === 'cave' || S.theme === 'ghost') {
-    const px = P.x + P.w / 2 - G.cam, py = P.y + 6;
+    const px = P.x + P.w / 2 - G.cam, py = P.y + 6 - G.camY;
     const v = c.createRadialGradient(px, py, 50, px, py, S.boss ? 420 : 290);
-    v.addColorStop(0, 'rgba(8,6,12,0)'); v.addColorStop(1, `rgba(8,6,12,${S.boss ? 0.55 : S.theme === 'ghost' ? 0.7 : 0.82})`);
+    v.addColorStop(0, 'rgba(8,6,12,0)'); v.addColorStop(1, `rgba(8,6,12,${S.boss ? 0.55 : S.bonus ? 0.4 : S.theme === 'ghost' ? 0.7 : 0.82})`);
     c.fillStyle = v; c.fillRect(0, 0, VW, VH);
   } else if (S.theme === 'rain' || (S.theme === 'storm' && !G.rainbow)) {
     c.strokeStyle = S.theme === 'rain' ? 'rgba(220,235,250,0.55)' : 'rgba(200,215,240,0.45)'; c.lineWidth = 1.2;
@@ -3050,7 +3190,7 @@ function drawWorld(c) {
     }
   }
   if (G.rain) {
-    c.save(); c.translate(-Math.round(G.cam), 0);
+    c.save(); c.translate(-Math.round(G.cam), -Math.round(G.camY));
     for (const d of rainDrops) drawApple(c, d.x, d.y, d.r, d.rot);
     c.restore();
     if (G.rain.t < 16) { c.fillStyle = `rgba(255,252,230,${0.8 * (1 - G.rain.t / 16)})`; c.fillRect(0, 0, VW, VH); }
