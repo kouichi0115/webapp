@@ -530,7 +530,7 @@ const STAGES = [
     L.start = { x: 2, y: 9 };
     return L;
   } },
-  { name: '地下のどうくつ', theme: 'cave', tip: 'つらら石は 真下に来ると 落ちてくるよ', tip2: 'ひびの入った 足場は 乗ると くずれるよ', build() {
+  { name: '地下のどうくつ', theme: 'cave', tip: 'つらら石は 真下に来ると 落ちてくるよ', tip2: 'ひびの入った 足場は 乗ると くずれるよ', tip3: 'トゲに さわると ダメージを うけるよ', build() {
     const L = makeLevel(190);
     L.fill(0, 189, 0, 1, '#');
     L.ground(0, 25, 2);
@@ -560,7 +560,7 @@ const STAGES = [
     L.e('goal', 182, 9);
     return L;
   } },
-  { name: '夜の森', theme: 'night', tip: 'イガグリが たくさん。りんごを たっぷり 集めておこう', tip2: 'トゲに さわると ダメージを うけるよ', build() {
+  { name: '夜の森', theme: 'night', tip: 'イガグリが たくさん。りんごを たっぷり 集めておこう', tip2: 'ジュースの びんを 取ると HPが 1 回復するよ', build() {
     const L = makeLevel(190);
     L.ground(0, 40, 2);
     L.apples([[5, 8], [6, 8], [7, 8], [8, 8]]);
@@ -3094,6 +3094,7 @@ function drawIntro(c) {
   text(c, '× ' + G.lives, VW / 2 + 10, 228, 22, '#fbf5e8', 'left');
   text(c, S.tip || '', VW / 2, 298, 14, '#e9f3dc', 'center');
   if (S.tip2) text(c, S.tip2, VW / 2, 322, 13, '#f3d75a', 'center');
+  if (S.tip3) text(c, S.tip3, VW / 2, 344, 13, '#f3d75a', 'center');
 }
 function drawEnding(c) {
   glowBackdrop(c);
