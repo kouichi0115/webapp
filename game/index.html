@@ -572,7 +572,7 @@ const STAGES = [
     L.e('goal', 182, 9);
     return L;
   } },
-  { name: '夜の森', theme: 'night', tip: 'イガグリが たくさん。りんごを たっぷり 集めておこう', tip2: 'ジュースの びんを 取ると HPが 1 回復するよ', build() {
+  { name: '夜の森', theme: 'night', tip: 'イガグリが たくさん。りんごを たっぷり 集めておこう', tip2: 'ジュースの びんを 取ると HPが 1 回復するよ', tip3: 'まわる 鉄球は 倒せない。タイミングを 見て くぐろう', build() {
     const L = makeLevel(190);
     L.ground(0, 40, 2);
     L.apples([[5, 8], [6, 8], [7, 8], [8, 8]]);
@@ -646,7 +646,7 @@ const STAGES = [
     L.start = { x: 3, y: 9 };
     return L;
   } },
-  { name: '雨の池', theme: 'rain', tip: '水に 落ちないように ハスの葉を わたろう', tip2: 'カエルは はねて 近づいてくるよ', build() {
+  { name: '雨の池', theme: 'rain', tip: '水に 落ちないように ハスの葉を わたろう', tip2: 'カエルは はねて 近づいてくるよ', tip3: 'かたいカメは 倒せない。ふむと 高く とべるよ', build() {
     const L = makeLevel(190);
     L.ground(0, 20, 2);
     L.apples([[6, 8], [7, 8], [8, 8]]);
@@ -779,7 +779,7 @@ const STAGES = [
     L.e('goal', 190, 9);
     return L;
   } },
-  { name: '砂漠とピラミッド', theme: 'desert', tip: '流砂に 入ると しずんでいくよ。ジャンプで ぬけだそう', tip2: '砂あらしの 中では おしもどされるよ', build() {
+  { name: '砂漠とピラミッド', theme: 'desert', tip: '流砂に 入ると しずんでいくよ。ジャンプで ぬけだそう', tip2: '砂あらしの 中では おしもどされるよ', tip3: 'どっしん石像は 真下に来ると 落ちてくる。上には 乗れるよ', build() {
     const L = makeLevel(200);
     L.ground(0, 25, 2);
     L.apples([[5, 8], [6, 8], [7, 8]]);
@@ -1048,6 +1048,17 @@ const G = {
 };
 let L = null, P = null, enemies = [], items = [], shots = [], hazards = [], parts = [], movers = [], boss = null;
 
+const EXTRA_FOES = {
+  '夜の森': [['spikeball', 20, 6], ['spikeball', 146, 6]],
+  '火山': [['spikeball', 33, 6], ['spikeball', 127, 5], ['spikeball', 166, 6]],
+  'ふしぎな工場': [['spikeball', 22, 6], ['spikeball', 130, 6]],
+  '雨の池': [['turtle', 34, 9], ['turtle', 87, 9], ['turtle', 136, 9]],
+  '海と砂浜': [['turtle', 31, 9], ['turtle', 168, 9]],
+  'ジャングル': [['turtle', 43, 9], ['turtle', 137, 9], ['turtle', 180, 9]],
+  '砂漠とピラミッド': [['thwomp', 34, 2], ['thwomp', 84, 2], ['thwomp', 164, 2]],
+  'おばけ屋敷': [['thwomp', 26, 2], ['thwomp', 113, 2], ['thwomp', 165, 2]],
+  '氷の洞窟': [['thwomp', 60, 2], ['thwomp', 90, 2], ['thwomp', 172, 2]],
+};
 const POWERS = ['star', 'big', 'flower', 'feather'];
 const POWER_INFO = { star: 'スター！ 8びょう むてき', big: '大きな りんご！ ダメージを 1回 ふせぐ', flower: '花の チャーム！ りんごを 3つ なげる', feather: '羽！ 2だんジャンプ と ふわふわ' };
 const isSolid = c => c === 'P' || c === 'X' || c === '#' || c === 'B' || c === 'Q' || c === 'U' || c === 'S' || c === 'C' || c === 'I' || c === 'J' || c === 'V' || c === '>' || c === '<';
@@ -1079,6 +1090,7 @@ function tileAt(tx, ty) {
 function loadStage(i) {
   const S = G.inBonus ? BONUSES[G.bonusIdx] : STAGES[i];
   L = S.build();
+  for (const [type, x, y] of (EXTRA_FOES[S.name] || [])) L.ents.push({ type, x, y });
   enemies = []; items = []; shots = []; hazards = []; parts = []; boss = null;
   crumbles.clear(); bumps.length = 0; respawns = [];
   L.appleTotal = L.ents.filter(e => e.type === 'apple').length; G.appleGot = 0; G.bonusT = 1800; G.bonusGot = 0; G.poisonHit = false; G.towerTop = false; G.towerBest = 0; G.spawnT = 0;
@@ -1088,6 +1100,7 @@ function loadStage(i) {
     else if (e.type === 'juice') items.push({ type: 'juice', x: e.x * T + 6, y: e.y * T, w: 18, h: 30, t: 0 });
     else if (e.type === 'goal') items.push({ type: 'goal', x: e.x * T - 4, y: (e.y + 1) * T - 66, w: 38, h: 66, t: 0 });
     else if (e.type === 'check') items.push({ type: 'check', x: e.x * T + 6, y: (e.y + 1) * T - 40, w: 18, h: 40, t: 0, tx: e.x, ty: e.y, on: false });
+    else if (e.type === 'thwomp') movers.push({ kind: 'thwomp', bx: e.x * T - 5, by: e.y * T + 2, x: e.x * T - 5, y: e.y * T + 2, w: 40, h: 44, vx: 0, vy: 0, st: 'wait', t: 0, fv: 0 });
     else if (e.type !== 'vine') enemies.push(makeEnemy(e));
   }
   let sx = L.start.x, sy = L.start.y;
@@ -1128,7 +1141,7 @@ function loadStage(i) {
 }
 
 function makeEnemy(e) {
-  const sizes = { walker: [24, 16], mush: [22, 22], bee: [22, 18], spiky: [22, 20], bird: [22, 16], snowball: [22, 22], rock: [14, 24], frog: [22, 18], strider: [26, 10], gummy: [20, 20], candy: [22, 22], fire: [16, 16], thunder: [40, 22], crab: [24, 16], hermit: [22, 20], ghost: [24, 24], robot: [20, 24], press: [30, 22], ufo: [30, 14], balloon: [22, 26], croc: [30, 18], monkey: [22, 22], mummy: [20, 26], scorp: [24, 14], penguin: [20, 22], soldier: [18, 28], toycar: [26, 14], goat: [26, 22] };
+  const sizes = { walker: [24, 16], mush: [22, 22], bee: [22, 18], spiky: [22, 20], bird: [22, 16], snowball: [22, 22], rock: [14, 24], frog: [22, 18], strider: [26, 10], gummy: [20, 20], candy: [22, 22], fire: [16, 16], thunder: [40, 22], crab: [24, 16], hermit: [22, 20], ghost: [24, 24], robot: [20, 24], press: [30, 22], ufo: [30, 14], balloon: [22, 26], croc: [30, 18], monkey: [22, 22], mummy: [20, 26], scorp: [24, 14], penguin: [20, 22], soldier: [18, 28], toycar: [26, 14], goat: [26, 22], turtle: [26, 20], spikeball: [22, 22] };
   const [w, h] = sizes[e.type];
   const o = { type: e.type, w, h, x: e.x * T + (T - w) / 2, y: (e.y + 1) * T - h, vx: 0, vy: 0, alive: true, dead: 0, t: Math.floor(hash(e.x) * 120), awake: false, face: -1, onGround: false };
   if (e.type === 'walker') o.vx = -0.8;
@@ -1148,6 +1161,8 @@ function makeEnemy(e) {
   if (e.type === 'soldier') o.vx = -0.7;
   if (e.type === 'toycar') o.vx = -2.2;
   if (e.type === 'goat') o.vx = -0.8;
+  if (e.type === 'turtle') { o.vx = -0.5; o.immune = true; o.shell = 0; }
+  if (e.type === 'spikeball') { o.cx = e.x * T + 15; o.cy = e.y * T + 15; o.rad = 2.5 * T; o.ang = hash(e.x) * Math.PI * 2; o.immune = true; o.x = o.cx - w / 2; o.y = o.cy + o.rad - h / 2; }
   if (e.type === 'press') { o.x = e.x * T; o.top = e.y * T; o.bot = 10 * T - h; o.y = o.top + 6; o.st = 'up'; o.t = Math.floor(hash(e.x) * 90); o.immune = true; }
   if (e.type === 'bee' || e.type === 'bird' || e.type === 'ufo') { o.bx = o.x; o.by = e.y * T + 6; o.y = o.by; o.range = e.range || 2; }
   if (e.type === 'rock') { o.y = e.y * T; o.st = 'hang'; }
@@ -1156,7 +1171,7 @@ function makeEnemy(e) {
   if (e.type === 'strider') { o.bx = o.x; o.y = e.y * T + 8 - h; o.range = e.range || 2; }
   if (e.type === 'fire') { o.by = e.y * T + 8; o.y = o.by; o.hidden = true; }
   if (e.type === 'thunder') { o.bx = o.x; o.by = e.y * T; o.y = o.by; o.range = e.range || 3; o.cd = 90; }
-  o.stompable = e.type !== 'spiky' && e.type !== 'rock' && e.type !== 'fire' && e.type !== 'hermit' && e.type !== 'press' && e.type !== 'croc' && e.type !== 'scorp';
+  o.stompable = e.type !== 'spikeball' && e.type !== 'spiky' && e.type !== 'rock' && e.type !== 'fire' && e.type !== 'hermit' && e.type !== 'press' && e.type !== 'croc' && e.type !== 'scorp';
   o.def = e;
   return o;
 }
@@ -1400,7 +1415,33 @@ function update() {
   for (const k in jp) jp[k] = false;
 }
 
+function updateThwomp(m) {
+  const cx = m.x + m.w / 2, px = P.x + P.w / 2;
+  let ny = m.y;
+  if (m.st === 'wait') {
+    if (Math.abs(px - cx) < 36 && P.y > m.y + m.h - 4 && P.y - m.y < 320) { m.st = 'shake'; m.t = 0; }
+  } else if (m.st === 'shake') {
+    m.t++; if (m.t > 12) { m.st = 'fall'; m.fv = 0; }
+  } else if (m.st === 'fall') {
+    m.fv = Math.min(m.fv + 0.7, 11); ny = m.y + m.fv;
+    const ty = Math.floor((ny + m.h) / T), x0 = Math.floor((m.x + 2) / T), x1 = Math.floor((m.x + m.w - 2) / T);
+    let hit = ny + m.h > L.rows * T;
+    for (let x = x0; x <= x1; x++) { const c = tileAt(x, ty); if (isSolid(c) || isOneWay(c)) hit = true; }
+    if (hit) {
+      ny = ty * T - m.h; m.st = 'land'; m.t = 0;
+      if (Math.abs(m.x - P.x) < 500) { G.shake = Math.max(G.shake, 8); tone(70, 0.25, 'square', 0.07); }
+      burst(m.x + m.w / 2, ny + m.h, 'rgba(220,210,190,0.9)', 10, 2);
+    }
+  } else if (m.st === 'land') {
+    m.t++; if (m.t > 50) m.st = 'rise';
+  } else if (m.st === 'rise') {
+    if (!(P.onMover === m && !headRoom(3))) ny = Math.max(m.by, m.y - 1.5);
+    if (ny <= m.by) m.st = 'wait';
+  }
+  m.vx = 0; m.vy = ny - m.y; m.y = ny;
+}
 function updateMover(m) {
+  if (m.kind === 'thwomp') return updateThwomp(m);
   m.t++;
   const k = 0.5 - 0.5 * Math.cos(m.t * 2 * Math.PI / m.period);
   const nx = m.bx + m.dx * T * k, ny = m.by + m.dy * T * k;
@@ -1681,6 +1722,7 @@ function updatePlay() {
   updateCrumbles();
   updateEnemies();
   if (boss) { if (boss.kind === 'mole') updateMole(); else if (boss.kind === 'king') updateKing(); else if (boss.kind === 'scorpion') updateScorpion(); else if (boss.kind === 'windup') updateWindup(); else updateBoss(); }
+  for (const m of movers) if (m.kind === 'thwomp' && G.state === 'play' && P.onMover !== m && overlap(P, { x: m.x + 3, y: m.y + 8, w: m.w - 6, h: m.h - 8 })) hurtPlayer();
   if (P.star > 0 && boss && bossHittable(boss) && boss.inv <= 0 && overlap(P, boss)) damageBoss();
   updateShots();
   updateHazards();
@@ -1874,6 +1916,9 @@ function updateEnemies() {
       else if (e.st === 'slam') { e.y = Math.min(e.bot, e.y + 9); if (e.y >= e.bot) { e.st = 'down'; e.t = 0; G.shake = Math.max(G.shake, Math.abs(e.x - P.x) < 300 ? 3 : 0); if (Math.abs(e.x - P.x) < 400) tone(90, 0.12, 'square', 0.05); } }
       else if (e.st === 'down') { if (e.t >= 30) { e.st = 'rise'; e.t = 0; } }
       else { e.y = Math.max(e.top + 6, e.y - 2.5); if (e.y <= e.top + 6) { e.st = 'up'; e.t = 0; } }
+    } else if (e.type === 'spikeball') {
+      e.ang += 0.032;
+      e.x = e.cx + Math.cos(e.ang) * e.rad - e.w / 2; e.y = e.cy + Math.sin(e.ang) * e.rad - e.h / 2;
     } else if (e.type === 'balloon') {
       e.x += e.vx; e.y = e.by + Math.sin(e.t * 0.05) * 12; e.face = e.vx < 0 ? -1 : 1;
       if (e.x < T - 24 || e.x > (L.w - 1) * T + 4) { e.alive = false; e.dead = 0; }
@@ -1930,7 +1975,8 @@ function updateEnemies() {
         }
       }
       if (e.type === 'frog' && e.onGround && e.t % 90 === 0) { e.vy = -7; e.vx = (P.x < e.x ? -1 : 1) * 2; }
-      const r = moveBody(e, e.vx, e.vy);
+      if (e.shell > 0) e.shell--;
+      const r = moveBody(e, e.shell > 0 ? 0 : e.vx, e.vy);
       if (r.wall) e.vx *= -1;
       e.onGround = r.landed;
       if (r.landed) e.vy = 0;
@@ -1948,6 +1994,11 @@ function updateEnemies() {
     // プレイヤーとの接触
     if (G.state === 'play' && !e.hidden && P.star > 0 && !e.immune && overlap(P, e)) { killEnemyByShot(e, { vx: P.face }); continue; }
     if (G.state === 'play' && !e.hidden && overlap(P, e)) {
+      if (e.type === 'turtle' && P.vy > 0 && P.pb <= e.y + 12) {
+        e.shell = 60; P.y = e.y - P.h; P.vy = -11.5; P.bounce = true; SFX.spring();
+        burst(e.x + e.w / 2, e.y, '#a6d79a', 6, 2);
+        continue;
+      }
       if (e.stompable && P.vy > 0 && P.pb <= e.y + 10) {
         e.alive = false; e.dead = 30; e.flat = true;
         P.vy = held('jump') ? -9.5 : -6.5; P.bounce = true;
@@ -1962,7 +2013,8 @@ function updateEnemies() {
         addGauge(15);
         if (e.type === 'balloon') G.bonusGot++;
       } else {
-        if (!e.harmless) hurtPlayer();
+        if (e.type === 'turtle' && e.shell > 0) P.vx = P.x < e.x ? -2.5 : 2.5;
+        else if (!e.harmless) hurtPlayer();
       }
     }
   }
@@ -2704,6 +2756,34 @@ function drawEnemy(c, e) {
     c.fillStyle = '#c9a43a'; c.fillRect(e.x, e.y, 30, 22); c.strokeRect(e.x + 0.5, e.y + 0.5, 29, 21);
     c.fillStyle = '#2e3138';
     for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(e.x + 2 + k * 7, e.y + 22); c.lineTo(e.x + 6 + k * 7, e.y + 16); c.lineTo(e.x + 9 + k * 7, e.y + 22); c.fill(); }
+  } else if (e.type === 'spikeball') { // トゲトゲ鉄球
+    c.restore(); c.save();
+    const bx = e.x + e.w / 2, by = e.y + e.h / 2;
+    c.fillStyle = '#6e6a63';
+    for (let k = 1; k < 6; k++) { const q = k / 6; c.beginPath(); c.arc(e.cx + (bx - e.cx) * q, e.cy + (by - e.cy) * q, 2.6, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#4a4458'; c.strokeStyle = OL; c.lineWidth = 1.2;
+    c.beginPath(); c.arc(e.cx, e.cy, 5, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.fillStyle = '#5a5662';
+    c.beginPath();
+    for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2 + e.ang, rr = k % 2 ? 9 : 15; c.lineTo(bx + Math.cos(a) * rr, by + Math.sin(a) * rr); }
+    c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#7a7684'; c.beginPath(); c.arc(bx, by, 8.5, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(bx - 3, by - 3, 3, 0, Math.PI * 2); c.fill();
+  } else if (e.type === 'turtle') { // かたいカメ
+    const inS = e.shell > 0, wob = inS ? Math.sin(e.shell * 0.6) * 1.5 : 0;
+    if (!inS) {
+      const lg = Math.sin(t * 0.2) * 1.5;
+      c.fillStyle = '#a6c97a';
+      c.beginPath(); c.ellipse(-8 + lg, -2, 3.5, 2.5, 0, 0, Math.PI * 2); c.ellipse(8 - lg, -2, 3.5, 2.5, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+      c.beginPath(); c.ellipse(-15, -9, 5, 4, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+      c.fillStyle = '#1d1a18'; c.beginPath(); c.arc(-16.5, -10, 1.2, 0, Math.PI * 2); c.fill();
+    }
+    c.translate(wob, 0);
+    c.fillStyle = '#3f8a4f';
+    c.beginPath(); c.moveTo(-13, -3); c.bezierCurveTo(-13, -22, 13, -22, 13, -3); c.closePath(); c.fill(); c.stroke();
+    c.strokeStyle = '#2f6e3c'; c.lineWidth = 1.2;
+    c.beginPath(); c.moveTo(-5, -15); c.lineTo(5, -15); c.lineTo(8, -8); c.lineTo(-8, -8); c.closePath(); c.moveTo(-5, -15); c.lineTo(-10, -6); c.moveTo(5, -15); c.lineTo(10, -6); c.stroke();
+    c.fillStyle = '#e8d394'; c.strokeStyle = OL; c.lineWidth = 1.2; c.fillRect(-13, -4, 26, 3); c.strokeRect(-13, -4, 26, 3);
   } else if (e.type === 'croc') { // ワニ
     if (e.hidden) { c.restore(); return; }
     const op = Math.sin(t * 0.3) * 3 + 4;
@@ -3657,7 +3737,24 @@ function drawTiles(c, theme, cam) {
     }
   }
 }
+function drawThwomp(c, m) {
+  const sh = m.st === 'shake' ? Math.sin(m.t * 2) * 2 : 0, x = m.x + sh, y = m.y;
+  c.fillStyle = '#8f8a82'; c.strokeStyle = OL; c.lineWidth = 1.6;
+  c.beginPath(); c.rect(x, y, m.w, m.h); c.fill(); c.stroke();
+  c.fillStyle = '#a7a199'; c.fillRect(x + 2, y + 2, m.w - 4, 5);
+  c.fillStyle = '#6e6a63';
+  for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(x + 4 + k * 9, y + m.h); c.lineTo(x + 8.5 + k * 9, y + m.h + 5); c.lineTo(x + 13 + k * 9, y + m.h); c.fill(); }
+  const angry = m.st !== 'wait' && m.st !== 'rise';
+  c.fillStyle = '#fbf5e8'; c.beginPath(); c.ellipse(x + 12, y + 20, 5, angry ? 5 : 3, 0, 0, Math.PI * 2); c.ellipse(x + 28, y + 20, 5, angry ? 5 : 3, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#1d1a18'; c.beginPath(); c.arc(x + 12, y + 21, 2, 0, Math.PI * 2); c.arc(x + 28, y + 21, 2, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#3a3630'; c.lineWidth = 2.4;
+  c.beginPath(); c.moveTo(x + 6, y + 13); c.lineTo(x + 17, y + (angry ? 17 : 15)); c.moveTo(x + 34, y + 13); c.lineTo(x + 23, y + (angry ? 17 : 15)); c.stroke();
+  c.beginPath(); c.moveTo(x + 13, y + 34); c.lineTo(x + 27, y + 34); c.stroke();
+  c.lineWidth = 1;
+  c.beginPath(); for (let k = 0; k < 4; k++) { c.moveTo(x + 14 + k * 4, y + 31); c.lineTo(x + 14 + k * 4, y + 37); } c.stroke();
+}
 function drawMover(c, m) {
+  if (m.kind === 'thwomp') return drawThwomp(c, m);
   c.fillStyle = '#9b6b40'; c.fillRect(m.x, m.y, m.w, m.h);
   c.fillStyle = '#b98757'; c.fillRect(m.x, m.y, m.w, 4);
   c.strokeStyle = '#5c3f28'; c.lineWidth = 1.2; c.strokeRect(m.x + 0.5, m.y + 0.5, m.w - 1, m.h - 1);
