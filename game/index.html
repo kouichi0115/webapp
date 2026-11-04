@@ -1242,9 +1242,19 @@ function losePowers() { setBig(false); P.flower = false; P.feather = false; P.gr
 function openPower(x, y) {
   L.g[y][x] = 'U';
   const kind = L.power[x + ',' + y] || 'star';
-  items.push({ type: 'power', kind, x: x * T + 5, y: y * T - 22, w: 20, h: 20, t: 0, vx: kind === 'star' ? 1.8 : 0, vy: -4 });
+  const dx = P.x + P.w / 2 - (x * T + 15), dir = Math.abs(dx) < 10 ? P.face : (dx < 0 ? 1 : -1);
+  items.push({ type: 'power', kind, x: x * T + 5, y: y * T - 22, w: 20, h: 20, t: 0, vx: (kind === 'star' ? 1.8 : 1.1) * dir, vy: -4 });
   [523, 784, 1047].forEach((f, k) => tone(f, 0.1, 'triangle', 0.06, null, now() + k * 0.05));
   burst(x * T + 15, y * T, '#fff3a0', 10, 2);
+}
+function powerPitAhead(it) {
+  const cx = Math.floor((it.vx > 0 ? it.x + it.w + 2 : it.x - 2) / T);
+  for (let y = Math.floor((it.y + it.h + 1) / T); y < L.rows; y++) {
+    const c = tileAt(cx, y);
+    if (c === '~' || c === '%') return true;
+    if (isSolid(c) || isOneWay(c)) return false;
+  }
+  return true;
 }
 function applyPower(kind) {
   addScore(1000, P.x + P.w / 2, P.y - 10);
@@ -2096,11 +2106,13 @@ function updateItems() {
     if (it.got) continue;
     if (it.type === 'power') {
       it.vy = Math.min(it.vy + 0.3, 7);
+      if (powerPitAhead(it)) it.vx *= -1;
       const r = moveBody(it, it.vx, it.vy);
       if (r.wall) it.vx *= -1;
+      it.onGround = r.landed;
       if (r.landed) it.vy = it.kind === 'star' ? -6 : 0;
       if (it.y > L.rows * T + 40) { it.got = true; continue; }
-      if (overlap(P, it)) { it.got = true; applyPower(it.kind); }
+      if (overlap(P, { x: it.x, y: it.y - 4, w: it.w, h: it.h + 8 })) { it.got = true; applyPower(it.kind); }
       continue;
     }
     if (it.falling) {
