@@ -3496,9 +3496,18 @@ function drawKyoto(c, B) {
   c.strokeStyle = OL; c.lineWidth = 1.6;
   // あたま
   c.fillStyle = '#f2c9a8'; c.beginPath(); c.ellipse(0, -60, 12, 13, 0, 0, Math.PI * 2); c.fill(); c.stroke();
-  c.strokeStyle = '#3a3630'; c.lineWidth = 1.4;
-  for (let k = 0; k < 4; k++) { c.beginPath(); c.moveTo(-8 + k * 2, -72); c.quadraticCurveTo(2 + k * 2, -75, 10, -68 + k); c.stroke(); }
-  c.fillStyle = '#3a3630'; c.beginPath(); c.ellipse(10, -60, 3, 6, 0, 0, Math.PI * 2); c.fill();
+  // 天然パーマ（もこもこの髪）
+  {
+    const curls = [];
+    for (let k = 0; k <= 10; k++) { const a = -2.55 + k * 0.32; curls.push([Math.cos(a) * 12.5, -61 + Math.sin(a) * 13.5]); }
+    curls.push([4, -77], [-4, -76.5], [10, -73]);
+    c.fillStyle = '#3a3630'; c.strokeStyle = OL; c.lineWidth = 1.1;
+    for (const [hx, hy] of curls) { c.beginPath(); c.arc(hx, hy, 4.6, 0, Math.PI * 2); c.fill(); c.stroke(); }
+    c.fillStyle = '#3a3630';
+    for (const [hx, hy] of curls) { c.beginPath(); c.arc(hx, hy, 3.6, 0, Math.PI * 2); c.fill(); }
+    c.strokeStyle = '#6a625a'; c.lineWidth = 1;
+    for (const [hx, hy] of curls) { c.beginPath(); c.arc(hx + 0.5, hy + 0.3, 2, 0.4, Math.PI * 1.6); c.stroke(); }
+  }
   // めがね・顔
   if (B.st === 'wipe' || B.st === 'down') {
     c.strokeStyle = '#1d1a18'; c.lineWidth = 1.5;
@@ -3513,7 +3522,6 @@ function drawKyoto(c, B) {
     if (B.t % 60 < 8) { c.fillStyle = '#ffffff'; c.beginPath(); c.moveTo(-10, -64); c.lineTo(-6, -64); c.lineTo(-9, -60); c.fill(); }
     c.lineWidth = 2; c.beginPath(); c.moveTo(-12, -67); c.lineTo(-3, -65 + (B.angry ? 1.5 : 0)); c.moveTo(0, -66 + (B.angry ? 1.5 : 0)); c.lineTo(8, -67); c.stroke();
   }
-  c.fillStyle = '#3a3630'; c.beginPath(); c.ellipse(-3, -53, 5, 1.6, 0, 0, Math.PI * 2); c.fill();
   c.strokeStyle = '#1d1a18'; c.lineWidth = 1.2;
   c.beginPath(); if (B.st === 'lecture') c.ellipse(-3, -50, 3, 2.2, 0, 0, Math.PI * 2); else { c.moveTo(-6, -49.5); c.lineTo(0, -49.5); } c.stroke();
   if (B.st === 'wipe') { c.fillStyle = '#9ec3e8'; c.beginPath(); c.ellipse(11, -68 + (B.t % 30) * 0.3, 2, 3, 0, 0, Math.PI * 2); c.fill(); }
