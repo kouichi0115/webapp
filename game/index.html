@@ -3499,14 +3499,14 @@ function drawKyoto(c, B) {
   // 天然パーマ（もこもこの髪）
   {
     const curls = [];
-    for (let k = 0; k <= 10; k++) { const a = -2.55 + k * 0.32; curls.push([Math.cos(a) * 12.5, -61 + Math.sin(a) * 13.5]); }
-    curls.push([4, -77], [-4, -76.5], [10, -73]);
-    c.fillStyle = '#3a3630'; c.strokeStyle = OL; c.lineWidth = 1.1;
-    for (const [hx, hy] of curls) { c.beginPath(); c.arc(hx, hy, 4.6, 0, Math.PI * 2); c.fill(); c.stroke(); }
+    for (let k = 0; k <= 10; k++) { const a = -2.5 + k * 0.215; curls.push([Math.cos(a) * 11.5, -61 + Math.sin(a) * 12.5]); }
+    curls.push([3, -73], [-3, -73]);
+    c.fillStyle = '#3a3630'; c.strokeStyle = OL; c.lineWidth = 1;
+    for (const [hx, hy] of curls) { c.beginPath(); c.arc(hx, hy, 3.3, 0, Math.PI * 2); c.fill(); c.stroke(); }
     c.fillStyle = '#3a3630';
-    for (const [hx, hy] of curls) { c.beginPath(); c.arc(hx, hy, 3.6, 0, Math.PI * 2); c.fill(); }
-    c.strokeStyle = '#6a625a'; c.lineWidth = 1;
-    for (const [hx, hy] of curls) { c.beginPath(); c.arc(hx + 0.5, hy + 0.3, 2, 0.4, Math.PI * 1.6); c.stroke(); }
+    for (const [hx, hy] of curls) { c.beginPath(); c.arc(hx, hy, 2.5, 0, Math.PI * 2); c.fill(); }
+    c.strokeStyle = '#6a625a'; c.lineWidth = 0.9;
+    for (const [hx, hy] of curls) { c.beginPath(); c.arc(hx + 0.4, hy + 0.2, 1.4, 0.4, Math.PI * 1.6); c.stroke(); }
   }
   // めがね・顔
   if (B.st === 'wipe' || B.st === 'down') {
